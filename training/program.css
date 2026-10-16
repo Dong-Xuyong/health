@@ -1,0 +1,76 @@
+#program:empty { display: none; }
+
+#program {
+  margin: 0 0 14px;
+}
+
+#program details {
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  background: hsl(var(--card));
+}
+
+#program .tp-week,
+#program .tp-session {
+  margin: 0 8px 8px;
+  background: hsl(var(--background));
+}
+
+#program summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+#program summary::-webkit-details-marker { display: none; }
+
+#program summary:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
+#program .tp-emoji {
+  flex: 0 0 auto;
+  width: 1.25em;
+  text-align: center;
+}
+
+#program .tp-line {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+#program .tp-bar {
+  flex: 0 0 4.25rem;
+  height: 6px;
+  border-radius: 99px;
+  background: hsl(var(--muted));
+  overflow: hidden;
+}
+
+#program .tp-bar > i {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: hsl(var(--tint, var(--primary)));
+}
+
+#program .tp-note,
+#program .tp-body p {
+  margin: 0;
+  padding: 0 12px 8px 34px;
+  color: var(--text-dim);
+  font-size: 0.82rem;
+}
+
+#program .tp-body p + p { padding-top: 0; }
