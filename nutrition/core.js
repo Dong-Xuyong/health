@@ -788,6 +788,38 @@
     return String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
   }
 
+  var RUN_DISTANCE_KM = 0.05;
+
+  function distanceKm(record) {
+    if (!record || typeof record !== "object") return null;
+    if (typeof record.km === "number" && Number.isFinite(record.km) && record.km > 0) return record.km;
+    var text = String(record.name || record.type || "");
+    var match = text.match(/(?:^|[^:\d])(\d+(?:\.\d+)?)\s*km\b/i);
+    if (!match) return null;
+    var km = Number(match[1]);
+    return km > 0 ? km : null;
+  }
+
+  function nutritionRunCovers(activity, entries) {
+    var activityName = activity && (activity.type || activity.name);
+    var activityKm;
+    var i;
+    var entry;
+    var entryKm;
+    if (exerciseRole(activityName) !== "run") return false;
+    activityKm = distanceKm(activity);
+    if (activityKm == null) return false;
+    for (i = 0; i < entries.length; i++) {
+      entry = entries[i];
+      if (!entry || typeof entry !== "object") continue;
+      if (exerciseRole(entry.name || entry.type) !== "run") continue;
+      entryKm = distanceKm(entry);
+      if (entryKm == null) continue;
+      if (Math.abs(entryKm - activityKm) <= RUN_DISTANCE_KM) return true;
+    }
+    return false;
+  }
+
   function estimateWork(name, givenKcal, minutes, km, bwKg) {
     if (givenKcal > 0) return { kcal: givenKcal, logged: true, met: null };
     if (!(minutes > 0) || !(bwKg > 0)) return null;
@@ -836,6 +868,8 @@
       if (!activity || typeof activity !== "object") continue;
       var label = activity.type || activity.name;
       if (covered && isLiftNamed(label)) continue;
+      // This session is already the same date as the nutrition day. A logged run there owns the calories.
+      if (nutritionRunCovers(activity, list)) continue;
       var actMinutes = durationMinutes(activity);
       var actEst = estimateWork(label, positiveNum(activity.kcal), actMinutes, activity.km, bwKg);
       if (!actEst) continue;
@@ -1627,4 +1661,105 @@ if (typeof module !== "undefined" && require.main === module) {
   var emptySleep = NutritionCore.sleepSeries({}, "2026-10-03", 2);
   assert.strictEqual(emptySleep[0].hours, null);
   assert.strictEqual(emptySleep[1].hours, null);
+
+  var stravaRun = {
+    name: "18:39 Run 5.59 km @5:27/km (Strava)",
+    durationMin: 30.5,
+    kcal: 375,
+    source: "Strava"
+  };
+  var duplicateRun = NutritionCore.workoutView(
+    { goals: {}, days: { "2026-10-16": { exercise: [stravaRun] } } },
+    {
+      sessions: {
+        "2026-10-16": {
+          activities: [
+            { type: "run", km: 5.59, durationMin: 30.5 },
+            { type: "walk", km: 5.59, durationMin: 40, kcal: 180 },
+            { type: "run", km: 3.2, durationMin: 18, kcal: 210 }
+          ]
+        }
+      }
+    },
+    "2026-10-16",
+    1
+  );
+  var duplicateManual = duplicateRun.rows[0].manual;
+  var duplicateSum = 0;
+  var duplicateNames = [];
+  var di;
+  for (di = 0; di < duplicateManual.length; di++) {
+    duplicateSum += duplicateManual[di].kcal;
+    duplicateNames.push(duplicateManual[di].name);
+  }
+  assert.strictEqual(duplicateManual.length, 3);
+  assert.strictEqual(duplicateNames.indexOf("18:39 Run 5.59 km @5:27/km (Strava)") !== -1, true);
+  assert.strictEqual(duplicateNames.indexOf("run 5.59 km"), -1);
+  assert.strictEqual(duplicateNames.indexOf("walk 5.59 km") !== -1, true);
+  assert.strictEqual(duplicateNames.indexOf("run 3.2 km") !== -1, true);
+  assert.strictEqual(duplicateManual[0].kcal, 375);
+  assert.strictEqual(duplicateSum, 375 + 180 + 210);
+  assert.strictEqual(duplicateRun.rows[0].exercise.mid, 375 + 180 + 210);
+
+  var edgeRun = NutritionCore.workoutView(
+    {
+      goals: {},
+      days: {
+        "2026-10-16": {
+          exercise: [
+            { name: "Run 5.54 km", kcal: 370 },
+            { name: "Run 5.53 km", kcal: 360 }
+          ]
+        }
+      }
+    },
+    {
+      sessions: {
+        "2026-10-16": {
+          activities: [
+            { type: "run", km: 5.59, durationMin: 30, kcal: 384 },
+            { type: "run", km: 5.65, durationMin: 30, kcal: 390 }
+          ]
+        }
+      }
+    },
+    "2026-10-16",
+    1
+  );
+  var edgeNames = [];
+  var edgeSum = 0;
+  var ei;
+  for (ei = 0; ei < edgeRun.rows[0].manual.length; ei++) {
+    edgeNames.push(edgeRun.rows[0].manual[ei].name);
+    edgeSum += edgeRun.rows[0].manual[ei].kcal;
+  }
+  assert.strictEqual(edgeNames.indexOf("run 5.59 km"), -1);
+  assert.strictEqual(edgeNames.indexOf("run 5.65 km") !== -1, true);
+  assert.strictEqual(edgeSum, 370 + 360 + 390);
+  assert.strictEqual(edgeRun.rows[0].exercise.mid, 370 + 360 + 390);
+
+  var splitDays = NutritionCore.workoutView(
+    {
+      goals: {},
+      days: {
+        "2026-10-15": { exercise: [{ name: "Run 5.59 km", kcal: 375 }] },
+        "2026-10-16": {}
+      }
+    },
+    {
+      sessions: {
+        "2026-10-16": { activities: [{ type: "run", km: 5.59, durationMin: 30, kcal: 384 }] }
+      }
+    },
+    "2026-10-16",
+    2
+  );
+  assert.strictEqual(splitDays.rows[0].key, "2026-10-15");
+  assert.strictEqual(splitDays.rows[0].manual.length, 1);
+  assert.strictEqual(splitDays.rows[0].manual[0].kcal, 375);
+  assert.strictEqual(splitDays.rows[1].key, "2026-10-16");
+  assert.strictEqual(splitDays.rows[1].manual.length, 1);
+  assert.strictEqual(splitDays.rows[1].manual[0].kcal, 384);
+  assert.strictEqual(splitDays.rows[1].manual[0].source, "streetlifting");
+  assert.strictEqual(splitDays.rows[1].exercise.mid, 384);
 }
