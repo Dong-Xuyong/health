@@ -5,11 +5,23 @@
   var STORE_KEY = "nutrition-v1";
   var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   var SCORE = {
-    green: "🟢 On target",
-    yellow: "🟡 Close",
-    red: "🔴 Off target",
-    grey: "⚪ No log",
-    partial: "⚪ Partial log"
+    green: "🟢",
+    yellow: "🟡",
+    red: "🔴",
+    grey: "⚪",
+    partial: "⚪"
+  };
+  var MEAL_LABEL = {
+    breakfast: "🍳 Breakfast",
+    lunch: "🥗 Lunch",
+    dinner: "🍝 Dinner",
+    snacks: "🍎 Snack"
+  };
+  var MEAL_MARK = {
+    breakfast: "🍳",
+    lunch: "🥗",
+    dinner: "🍝",
+    snacks: "🍎"
   };
   var SVGNS = "http://www.w3.org/2000/svg";
   var GREEN = "hsl(152 55% 40%)";
@@ -358,13 +370,56 @@
     var nums = node("div", "nums");
     var bar = node("div", "bar");
     var fill = document.createElement("i");
+    var text = goal > 0 ? fmt(total) + "/" + fmt(goal) : fmt(total);
     row.appendChild(node("span", "name", label));
-    nums.appendChild(node("span", "", goal > 0 ? fmt(total) + " / " + fmt(goal) + " g" : fmt(total) + " g"));
+    nums.appendChild(node("span", "", text));
     row.appendChild(nums);
-    fill.style.width = (goal > 0 ? Math.min(100, (total / goal) * 100) : 0) + "%";
+    if (!(goal > 0)) return row;
+    fill.style.width = Math.min(100, (total / goal) * 100) + "%";
     bar.appendChild(fill);
     row.appendChild(bar);
     return row;
+  }
+
+  function pairRow(mark, text) {
+    var row = node("div", "item pair");
+    row.appendChild(node("span", "", mark));
+    row.appendChild(node("span", "kcal", text));
+    return row;
+  }
+
+  function waterText(day) {
+    var keys = ["waterMl", "water", "hydrationMl", "hydration"];
+    var i;
+    var n;
+    if (!day || typeof day !== "object") return "";
+    for (i = 0; i < keys.length; i++) {
+      n = day[keys[i]];
+      if (typeof n !== "number" || !isFinite(n) || n <= 0) continue;
+      if (n >= 1000) return kgText(n / 1000) + " L";
+      if (n >= 20) return fmt(n) + " ml";
+      return kgText(n) + " L";
+    }
+    return "";
+  }
+
+  function shortInsight(line) {
+    var text = String(line || "");
+    var match;
+    match = text.match(/^Averaging ([0-9,]+) kcal/);
+    if (match) return "🔥 " + match[1];
+    match = text.match(/^Over that day's target on (\d+) of (\d+)/);
+    if (match) return "🎯 " + match[1] + "/" + match[2];
+    match = text.match(/^Protein under that day's target on (\d+) of (\d+)/);
+    if (match) return "🥩 " + match[1] + "/" + match[2];
+    match = text.match(/^Top foods: (.+)$/);
+    if (match) {
+      return "🍎 " + match[1].replace(/\s*\([^)]*\)/g, "").replace(/,\s*/g, " · ");
+    }
+    match = text.match(/^Weight (up|down) ([0-9.]+) kg$/);
+    if (match) return "⚖️ " + (match[1] === "up" ? "+" : "−") + match[2];
+    if (text === "Weight steady") return "⚖️ 0";
+    return text;
   }
 
   function sessionsMap() {
@@ -375,8 +430,7 @@
 
   function workoutKcalText(item) {
     if (!item || !(item.kcal > 0)) return "";
-    if (item.logged) return fmt(item.kcal) + " kcal";
-    return "about " + fmt(item.kcal) + " kcal";
+    return fmt(item.kcal);
   }
 
   function workoutCard(key) {
@@ -388,52 +442,36 @@
     view = NutritionCore.workoutView(store, streetlifting, key, 1);
     row = view && view.rows ? view.rows[view.rows.length - 1] : null;
     if (!row || row.key !== key) return null;
-    section = card("Workout", "", "");
+    section = card("🏋️", "", "");
     if (row.strength && Array.isArray(row.strength.exercises)) {
       row.strength.exercises.forEach(function (ex) {
-        var line;
         var burned;
         if (!ex) return;
-        line = node("div", "ex-row");
-        line.appendChild(node("span", "", ex.name || "Strength"));
-        burned = node(
-          "span",
-          "kcal",
-          row.strength.missingWeight ? "No bodyweight" : NutritionCore.formatKcalRange({
-            mid: ex.mid,
-            low: ex.low,
-            high: ex.high
-          })
-        );
-        burned.style.gridColumn = "3";
-        line.appendChild(burned);
-        section.appendChild(line);
+        burned = row.strength.missingWeight ? "—" : String(NutritionCore.formatKcalRange({
+          mid: ex.mid,
+          low: ex.low,
+          high: ex.high
+        })).replace(/^about /, "").replace(/ kcal$/, "");
+        section.appendChild(pairRow("🏋️ " + (ex.name || "Lift"), burned));
         shown = true;
       });
     }
     (row.manual || []).forEach(function (item) {
-      var line;
-      var burned;
       var text = workoutKcalText(item);
       if (!text) return;
-      line = node("div", "ex-row");
-      line.appendChild(node("span", "", item.name || "Exercise"));
-      burned = node("span", "kcal", text);
-      burned.style.gridColumn = "3";
-      line.appendChild(burned);
-      section.appendChild(line);
+      section.appendChild(pairRow("🏃 " + (item.name || "Work"), text));
       shown = true;
     });
     if (!shown) return null;
     (function () {
       var burned = 0;
-      if (row.strength && typeof row.strength.mid === "number") burned += row.strength.mid;
+      var strengthMid = row.strength && row.strength.total ? row.strength.total.mid : row.strength && row.strength.mid;
+      if (typeof strengthMid === "number" && isFinite(strengthMid)) burned += strengthMid;
       (row.manual || []).forEach(function (item) {
         if (item && typeof item.kcal === "number") burned += item.kcal;
       });
-      if (burned > 0) foldStat(section, fmt(burned) + " kcal");
+      if (burned > 0) foldStat(section, fmt(burned));
     })();
-    section.appendChild(node("p", "chart-label", "Not subtracted from eaten."));
     return section;
   }
 
@@ -472,54 +510,54 @@
   function bodyHealthCard(key) {
     var specs = {
       body: [
-        ["bodyFat", "Body fat", "%"],
-        ["fatMassKg", "Fat mass", "kg"],
-        ["leanMassKg", "Lean mass", "kg"],
-        ["muscleMassKg", "Muscle mass", "kg"],
-        ["metabolicAge", "Metabolic age", "y"],
-        ["visceralFat", "Visceral fat", ""],
-        ["waterPct", "Body water", "%"]
+        ["bodyFat", "📉 Fat", "%"],
+        ["fatMassKg", "📉 Fat kg", ""],
+        ["leanMassKg", "💪 Lean", ""],
+        ["muscleMassKg", "💪 Muscle", ""],
+        ["metabolicAge", "🎂 Age", ""],
+        ["visceralFat", "📉 Visceral", ""],
+        ["waterPct", "💧 Water", "%"]
       ],
       skinfolds: [
-        ["triceps", "Triceps", "mm"],
-        ["biceps", "Biceps", "mm"],
-        ["subscapular", "Subscapular", "mm"],
-        ["suprailiac", "Suprailiac", "mm"],
-        ["abdominal", "Abdominal", "mm"],
-        ["supraspinal", "Supraspinal", "mm"],
-        ["thigh", "Thigh", "mm"],
-        ["calf", "Calf", "mm"]
+        ["triceps", "📏 Tri", ""],
+        ["biceps", "📏 Bi", ""],
+        ["subscapular", "📏 Sub", ""],
+        ["suprailiac", "📏 Iliac", ""],
+        ["abdominal", "📏 Abs", ""],
+        ["supraspinal", "📏 Spine", ""],
+        ["thigh", "📏 Thigh", ""],
+        ["calf", "📏 Calf", ""]
       ],
       circ: [
-        ["armRelaxedR", "Arm relaxed R", "cm"],
-        ["armRelaxedL", "Arm relaxed L", "cm"],
-        ["armFlexedR", "Arm flexed R", "cm"],
-        ["armFlexedL", "Arm flexed L", "cm"],
-        ["thighR", "Thigh R", "cm"],
-        ["thighL", "Thigh L", "cm"],
-        ["calfR", "Calf R", "cm"],
-        ["calfL", "Calf L", "cm"],
-        ["waist", "Waist", "cm"],
-        ["glutes", "Glutes", "cm"]
+        ["armRelaxedR", "📏 Arm R", ""],
+        ["armRelaxedL", "📏 Arm L", ""],
+        ["armFlexedR", "💪 Arm R", ""],
+        ["armFlexedL", "💪 Arm L", ""],
+        ["thighR", "📏 Thigh R", ""],
+        ["thighL", "📏 Thigh L", ""],
+        ["calfR", "📏 Calf R", ""],
+        ["calfL", "📏 Calf L", ""],
+        ["waist", "📏 Waist", ""],
+        ["glutes", "📏 Glutes", ""]
       ],
       vitals: [
-        ["restingHr", "Resting HR", "bpm"],
-        ["bpSys", "BP systolic", "mmHg"],
-        ["bpDia", "BP diastolic", "mmHg"]
+        ["restingHr", "❤️ HR", ""],
+        ["bpSys", "❤️ SYS", ""],
+        ["bpDia", "❤️ DIA", ""]
       ],
       labs: [
-        ["glucose", "Glucose", "mmol/L"],
-        ["hba1c", "HbA1c", "%"],
-        ["ldl", "LDL", "mmol/L"],
-        ["hdl", "HDL", "mmol/L"],
-        ["triglycerides", "Triglycerides", "mmol/L"],
-        ["alt", "ALT", "U/L"],
-        ["ast", "AST", "U/L"]
+        ["glucose", "🧪 Glucose", ""],
+        ["hba1c", "🧪 HbA1c", ""],
+        ["ldl", "🧪 LDL", ""],
+        ["hdl", "🧪 HDL", ""],
+        ["triglycerides", "🧪 TG", ""],
+        ["alt", "🧪 ALT", ""],
+        ["ast", "🧪 AST", ""]
       ]
     };
     var health = typeof NutritionCore.latestHealth === "function" ? NutritionCore.latestHealth(store.days, key) : null;
     var profile = store.profile;
-    var section = card("Body", "", "");
+    var section = card("🧍", "", "");
     var shown = false;
     var headline = "";
 
@@ -547,12 +585,12 @@
       if (typeof profile.heightCm === "number" && isFinite(profile.heightCm)) {
         shown = true;
         if (!headline) headline = qty(profile.heightCm, "cm");
-        section.appendChild(row("Height", qty(profile.heightCm, "cm"), ""));
+        section.appendChild(row("📏 Height", qty(profile.heightCm, ""), ""));
       }
       [
-        ["birthYear", "Birth year"],
-        ["sex", "Sex"],
-        ["activity", "Activity"]
+        ["birthYear", "🎂 Year"],
+        ["sex", "👤 Sex"],
+        ["activity", "🏃 Activity"]
       ].forEach(function (field) {
         var value = profile[field[0]];
         var amount = null;
@@ -564,11 +602,11 @@
       });
     }
     [
-      ["Composition", "body"],
-      ["Skinfolds", "skinfolds"],
-      ["Circumferences", "circ"],
-      ["Vitals", "vitals"],
-      ["Labs", "labs"]
+      ["🧬", "body"],
+      ["📏", "skinfolds"],
+      ["📏", "circ"],
+      ["❤️", "vitals"],
+      ["🧪", "labs"]
     ].forEach(function (pair) {
       var group = health[pair[1]];
       var known = {};
@@ -646,18 +684,13 @@
       String(targetCal > 0 ? Math.min(100, Math.round((eaten / targetCal) * 100)) : 0)
     );
     els.ring.classList.toggle("over", targetCal > 0 && eaten > targetCal);
-    if (!(targetCal > 0)) els.remain.textContent = fmt(eaten);
-    else els.remain.textContent = fmt(eaten) + " / " + fmt(targetCal);
-    if (els.score && status === "complete" && targetCal > 0) {
-      els.score.textContent =
-        (NutritionCore.label(key) || "") + " · " +
-        fmt(Math.abs(remaining)) + (remaining < 0 ? " over" : " left") + " · " +
-        (balance.type === "training" ? "Training" : "Rest");
-    } else {
-      els.score.textContent =
-        (NutritionCore.label(key) || "") + " · " +
-        (SCORE[band] || "No log") + " · " +
-        (balance.type === "training" ? "Training" : "Rest");
+    els.remain.textContent = "🔥 " + (targetCal > 0 ? fmt(eaten) + "/" + fmt(targetCal) : fmt(eaten));
+    if (els.score) {
+      if (targetCal > 0 && remaining != null && status !== "grey") {
+        els.score.textContent = fmt(Math.abs(remaining)) + (remaining < 0 ? " over" : " left");
+      } else {
+        els.score.textContent = SCORE[band] || "⚪";
+      }
     }
     (function () {
       var viz = document.getElementById("hero-viz");
@@ -665,29 +698,63 @@
       var proteinGoal = balance.targets && balance.targets.protein;
       if (!viz || !window.SuiteUI) return;
       viz.textContent = "";
-      if (targetCal > 0) viz.appendChild(SuiteUI.ring((eaten / targetCal) * 100, fmt(eaten) + " of " + fmt(targetCal) + " kcal"));
-      if (proteinGoal > 0) viz.appendChild(SuiteUI.ring((protein / proteinGoal) * 100, fmt(protein) + " of " + fmt(proteinGoal) + " g protein"));
+      if (targetCal > 0) viz.appendChild(SuiteUI.ring((eaten / targetCal) * 100, "kcal"));
+      if (proteinGoal > 0) viz.appendChild(SuiteUI.ring((protein / proteinGoal) * 100, "protein"));
     })();
 
     els.main.textContent = "";
     if (band === "grey") {
-      var noMeals = Array.isArray(day.exercise) && day.exercise.length;
-      var empty = card(noMeals ? "No meals" : "Empty", "empty", "0");
-      empty.appendChild(node("p", "", noMeals ? "Left out of averages." : "Nothing logged."));
-      els.main.appendChild(empty);
+      els.main.appendChild(card("⚪", "empty", "0"));
     }
     if (band === "partial") {
-      var partial = card("Partial", "note", "Left out");
-      partial.appendChild(node("p", "", "Left out of averages."));
-      els.main.appendChild(partial);
+      els.main.appendChild(card("⚪", "note", "—"));
     }
+
+    (function () {
+      var targets = balance.targets || {};
+      var rows = [
+        ["🔥", targets.calories],
+        ["🥩", targets.protein],
+        ["🍞", targets.carbs],
+        ["🥑", targets.fat]
+      ];
+      var section;
+      var i;
+      var any = false;
+      for (i = 0; i < rows.length; i++) {
+        if (rows[i][1] > 0) any = true;
+      }
+      if (!any) return;
+      section = card("🎯", "", targets.calories > 0 ? fmt(targets.calories) : "");
+      rows.forEach(function (spec) {
+        if (!(spec[1] > 0)) return;
+        section.appendChild(pairRow(spec[0], fmt(spec[1])));
+      });
+      els.main.appendChild(section);
+    })();
+
+    (function () {
+      var water = waterText(day);
+      var leaf;
+      var health;
+      if (!water && typeof NutritionCore.latestHealth === "function") {
+        health = NutritionCore.latestHealth(days, key);
+        leaf = health && health.body && health.body.waterPct;
+        if (leaf && typeof leaf.value === "number" && isFinite(leaf.value) && leaf.value > 0 && leaf.key === key) {
+          water = fmt(leaf.value) + "%";
+        }
+      }
+      if (!water) return;
+      els.main.appendChild(card("💧", "", water));
+    })();
 
     macros = node("div", "macros");
     anyMacro = false;
     [
-      ["Protein", totals.protein, balance.targets.protein],
-      ["Carbs", totals.carbs, balance.targets.carbs],
-      ["Fat", totals.fat, balance.targets.fat]
+      ["🔥", eaten, targetCal],
+      ["🥩", totals.protein, balance.targets.protein],
+      ["🍞", totals.carbs, balance.targets.carbs],
+      ["🥑", totals.fat, balance.targets.fat]
     ].forEach(function (spec) {
       var total = typeof spec[1] === "number" ? spec[1] : 0;
       var goal = typeof spec[2] === "number" ? spec[2] : 0;
@@ -698,22 +765,18 @@
     if (anyMacro) {
       var proteinNow = typeof totals.protein === "number" ? totals.protein : 0;
       var proteinGoal = balance.targets && typeof balance.targets.protein === "number" ? balance.targets.protein : 0;
-      var macroCard = card(
-        "Macros",
-        "",
-        proteinGoal > 0 ? fmt(proteinNow) + " / " + fmt(proteinGoal) + " g" : fmt(proteinNow) + " g"
-      );
+      var macroCard = card("🥩", "", proteinGoal > 0 ? fmt(proteinNow) + "/" + fmt(proteinGoal) : fmt(proteinNow));
       var macroViz = foldViz(macroCard);
       if (macroViz && window.SuiteUI) {
-        if (targetCal > 0) macroViz.appendChild(SuiteUI.ring((eaten / targetCal) * 100, "Calories"));
-        if (proteinGoal > 0) macroViz.appendChild(SuiteUI.ring((proteinNow / proteinGoal) * 100, "Protein"));
+        if (targetCal > 0) macroViz.appendChild(SuiteUI.ring((eaten / targetCal) * 100, "kcal"));
+        if (proteinGoal > 0) macroViz.appendChild(SuiteUI.ring((proteinNow / proteinGoal) * 100, "protein"));
       }
       macroCard.appendChild(macros);
       els.main.appendChild(macroCard);
     }
 
     if (typeof day.note === "string" && day.note.trim()) {
-      var note = card("Coach", "note");
+      var note = card("📝", "note");
       note.appendChild(node("p", "", day.note.trim()));
       els.main.appendChild(note);
     }
@@ -724,17 +787,20 @@
       var section;
       var sub;
       var mealKcal;
+      var mark = MEAL_MARK[name] || "🍽️";
       if (!Array.isArray(items) || !items.length) return;
       sub = totals.byMeal && totals.byMeal[name];
       mealKcal = sub && typeof sub === "object" ? sub.kcal : 0;
-      section = card(cap(name), "", fmt(mealKcal) + " kcal");
+      section = card(MEAL_LABEL[name] || cap(name), "", fmt(mealKcal));
       items.forEach(function (item) {
         var row;
+        var qty;
         if (!item || typeof item !== "object") return;
-        row = node("div", "item");
-        row.appendChild(node("span", "", item.name || ""));
-        row.appendChild(node("span", "qty", item.qty == null ? "" : String(item.qty)));
-        row.appendChild(node("span", "kcal", fmt(item.kcal) + " kcal"));
+        qty = item.qty == null ? "" : String(item.qty).trim();
+        row = node("div", qty ? "item" : "item pair");
+        row.appendChild(node("span", "", mark + " " + (item.name || "")));
+        if (qty) row.appendChild(node("span", "qty", qty));
+        row.appendChild(node("span", "kcal", fmt(item.kcal)));
         section.appendChild(row);
       });
       els.main.appendChild(section);
@@ -750,7 +816,7 @@
       series.forEach(function (day) {
         if (day && typeof day.kcal === "number") lastKcal = day.kcal;
       });
-      var trends = card("Trends", "", series.length ? fmt(lastKcal) + " kcal" : "");
+      var trends = card("📈", "", series.length ? fmt(lastKcal) : "");
       var trendViz = foldViz(trends);
       if (trendViz && window.SuiteUI) {
         trendViz.appendChild(SuiteUI.spark(series.map(function (day) {
@@ -759,7 +825,8 @@
       }
       var toggle = node("div", "toggle");
       [7, 30].forEach(function (days) {
-        var choice = button(range === days ? "on" : "", days + " days");
+        var choice = button(range === days ? "on" : "", String(days));
+        choice.setAttribute("aria-label", days + " days");
         choice.addEventListener("click", function () {
           if (range === days) return;
           range = days;
@@ -768,7 +835,6 @@
         toggle.appendChild(choice);
       });
       trends.appendChild(toggle);
-      trends.appendChild(node("p", "chart-label", "Calories"));
       trends.appendChild(calorieChart(series));
       els.main.appendChild(trends);
     })();
@@ -779,33 +845,26 @@
       var chart;
       var last;
       var box;
-      var caption;
       if (!history.length) return;
       chart = weightChart(history, history, goalN);
       if (!chart) return;
       last = history[history.length - 1];
-      box = card("Weight", "", kgText(last.weight) + " kg");
+      box = card("⚖️", "", kgText(last.weight));
       (function () {
         var viz = foldViz(box);
         if (!viz || !window.SuiteUI) return;
         viz.appendChild(SuiteUI.spark(history.map(function (item) { return item.weight; }), "Weight"));
       })();
       box.appendChild(chart);
-      caption = kgText(last.weight) + " kg · " + last.key;
-      if (goalN > 0) caption += " · goal " + kgText(goalN) + " kg";
-      box.appendChild(node("p", "chart-label", caption));
+      if (goalN > 0) box.appendChild(node("p", "chart-label", "🎯 " + kgText(goalN)));
       els.main.appendChild(box);
     })();
 
     (function () {
       var goalH = goals.sleepHours;
       var series;
-      var week;
       var box;
-      var parts;
       var last;
-      var sum;
-      var count;
       function hourText(n) {
         return String(Math.round(n * 10) / 10);
       }
@@ -817,7 +876,7 @@
         if (item && typeof item.hours === "number" && isFinite(item.hours)) last = item;
       });
       if (!last) return;
-      box = card("Sleep", "", hourText(last.hours) + " h");
+      box = card("😴", "", hourText(last.hours) + (goalH > 0 ? "/" + hourText(goalH) : ""));
       (function () {
         var viz = foldViz(box);
         if (!viz || !window.SuiteUI) return;
@@ -826,22 +885,6 @@
         }), "Sleep"));
       })();
       box.appendChild(sleepChart(series, goalH));
-      parts = ["Last night " + hourText(last.hours) + " h"];
-      week = NutritionCore.sleepSeries(store.days, key, 7);
-      sum = 0;
-      count = 0;
-      if (Array.isArray(week)) {
-        week.forEach(function (item) {
-          if (!(item && typeof item.hours === "number" && isFinite(item.hours))) return;
-          sum += item.hours;
-          count += 1;
-        });
-      }
-      if (count) parts.push("7-day avg " + hourText(sum / count) + " h");
-      if (goalH > 0 && typeof NutritionCore.sleepStreak === "function") {
-        parts.push(NutritionCore.sleepStreak(store.days, goalH, key) + "-night streak (goal " + hourText(goalH) + " h)");
-      }
-      box.appendChild(node("p", "chart-label", parts.join(" \u00b7 ")));
       els.main.appendChild(box);
     })();
 
@@ -850,10 +893,10 @@
 
     lines = NutritionCore.insights(days, goals, key, sessions) || [];
     if (lines.length) {
-      var insightCard = card("Insights", "", String(lines.length));
+      var insightCard = card("💡", "", String(lines.length));
       var list = node("ul", "insights");
       lines.forEach(function (line) {
-        list.appendChild(node("li", "", String(line)));
+        list.appendChild(node("li", "", shortInsight(line)));
       });
       insightCard.appendChild(list);
       els.main.appendChild(insightCard);
@@ -865,7 +908,8 @@
       (grid.cells || []).forEach(function (cell) {
         if (cell && cell.inMonth && NutritionCore.score(days[cell.key], goals, sessions[cell.key]) === "green") onTarget += 1;
       });
-      var month = card(grid.title || "Month", "", onTarget + " on target");
+      var monthName = String(grid.title || "Month").split(" ")[0].slice(0, 3);
+      var month = card(monthName, "", String(onTarget));
       var head = node("div", "heat-head");
       heat = node("div", "heat");
       WEEKDAYS.forEach(function (name) {

@@ -133,6 +133,7 @@ header [data-dong-theme-toggle] {
 }
 
 #ring.ring {
+  display: none;
   --p: 0;
   width: 112px;
   height: 112px;
@@ -216,24 +217,35 @@ header [data-dong-theme-toggle] {
 .macros {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 12px;
+  gap: 8px;
+}
+
+.macro {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 10px;
+  align-items: center;
 }
 
 .macro .name {
-  font-size: 0.82rem;
+  font-size: 1.05rem;
   font-weight: 600;
-  color: var(--text-dim);
 }
 
 .macro .nums {
-  margin: 2px 0 6px;
-  font-size: 0.92rem;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  text-align: right;
 }
 
 .macro .bar {
+  grid-column: 1 / -1;
   display: block;
-  height: 8px;
+  height: 6px;
+  margin-top: 4px;
   border-radius: 99px;
   background: hsl(var(--muted));
   overflow: hidden;
@@ -267,11 +279,28 @@ header [data-dong-theme-toggle] {
 .item,
 .ex-row {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px;
+  align-items: center;
+  min-height: 44px;
   padding: 6px 0;
   border-top: 1px solid var(--line);
   font-size: 0.92rem;
+}
+
+.item > span:first-child,
+.ex-row > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item.pair {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.item.pair .kcal {
+  text-align: right;
 }
 
 .item .qty,
@@ -296,8 +325,9 @@ header [data-dong-theme-toggle] {
   background: var(--bg);
   color: inherit;
   border-radius: 999px;
-  padding: 6px 12px;
-  min-height: 36px;
+  padding: 6px 14px;
+  min-height: 44px;
+  min-width: 44px;
   cursor: pointer;
 }
 

@@ -1105,6 +1105,7 @@
       var key = on(delta);
       var entry = { updatedAt: key + "T12:00:00Z" };
       if (spec.weight) entry.weight = spec.weight;
+      if (spec.waterMl) entry.waterMl = spec.waterMl;
       if (spec.note) entry.note = spec.note;
       if (spec.dayType) entry.dayType = spec.dayType;
       if (spec.meals) entry.meals = spec.meals;
@@ -1129,6 +1130,7 @@
     }
     put(0, {
       weight: 78.6,
+      waterMl: 2100,
       meals: full,
       session: { bw: 78.6, note: "Squat day", lifts: { squat: sets(120, 5, 4, 8), pullup: sets(20, 5, 4), dip: sets(30, 6, 3) } }
     });
