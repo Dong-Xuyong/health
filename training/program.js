@@ -325,7 +325,7 @@
       total += weekTotal;
       done += weekDone;
       weeks.push({
-        emoji: weekDone === weekTotal ? "✅" : "📅",
+        emoji: weekDone === weekTotal ? "✅" : "📌",
         summary: weekTitle(week.key, w + 1) + " · " + countWord(weekTotal, "session", "sessions") + " · " + String(weekDone) + " done",
         pct: Math.round((weekDone / weekTotal) * 1000) / 10,
         sessions: sessions
