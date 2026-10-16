@@ -1,0 +1,16 @@
+{
+  "sessions": {
+    "2026-10-01": {
+      "lifts": {
+        "EXAMPLE squat": [{ "reps": 5 }, { "reps": 5 }, { "reps": 5 }],
+        "EXAMPLE press": [{ "reps": 8 }, { "reps": 8 }]
+      },
+      "liftKcal": 180,
+      "activities": [{ "type": "EXAMPLE walk", "durationMin": 25 }]
+    },
+    "2026-10-02": {
+      "lifts": {},
+      "activities": [{ "name": "EXAMPLE mobility", "minutes": 15 }]
+    }
+  }
+}

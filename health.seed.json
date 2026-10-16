@@ -1,0 +1,11 @@
+{
+  "app": "health",
+  "schemaVersion": 1,
+  "owner": "chopper",
+  "updatedAt": null,
+  "settings": {
+    "sleepTargetHours": null,
+    "updatedAt": null
+  },
+  "injuries": []
+}

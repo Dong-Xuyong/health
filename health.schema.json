@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "progress-sync/health.json",
+  "type": "object",
+  "description": "Injury log and sleep-target override. Sleep nights are not stored here; the app reads them from journal.json.",
+  "required": ["app", "schemaVersion", "owner", "updatedAt", "settings", "injuries"],
+  "properties": {
+    "app": { "const": "health" },
+    "schemaVersion": { "const": 1 },
+    "owner": { "const": "chopper" },
+    "updatedAt": { "type": ["string", "null"], "format": "date-time" },
+    "settings": {
+      "type": "object",
+      "required": ["sleepTargetHours", "updatedAt"],
+      "properties": {
+        "sleepTargetHours": {
+          "type": ["number", "null"],
+          "description": "null = fall back to nutrition.json goals.sleepHours, else 8"
+        },
+        "updatedAt": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "injuries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "area", "side", "startedOn", "status", "checkins", "updatedAt"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^inj_[a-z0-9]{6}$" },
+          "area": { "type": "string", "description": "e.g. elbow, lower back" },
+          "side": { "enum": ["left", "right", "both", "n/a"] },
+          "startedOn": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "resolvedOn": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "status": { "enum": ["active", "recovering", "resolved"] },
+          "cause": { "type": "string" },
+          "avoid": { "type": "array", "items": { "type": "string" }, "description": "Movements to avoid, free text" },
+          "notes": { "type": "string" },
+          "checkins": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "date", "pain", "updatedAt"],
+              "properties": {
+                "id": { "type": "string", "pattern": "^ck_[a-z0-9]{6}$" },
+                "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+                "pain": { "type": "integer", "minimum": 0, "maximum": 10 },
+                "note": { "type": "string" },
+                "updatedAt": { "type": "string", "format": "date-time" },
+                "deleted": { "type": "boolean" }
+              }
+            }
+          },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "deleted": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}
