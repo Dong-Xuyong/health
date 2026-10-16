@@ -89,7 +89,7 @@
       });
       return made.details;
     }
-    var section = node("section", "card");
+    var section = node("section", "card dx-card");
     if (title) section.appendChild(node("h3", "", title));
     return section;
   }
@@ -444,7 +444,7 @@
 
   function nestFold(title, stat, key) {
     var made = window.SuiteUI && SuiteUI.fold ? SuiteUI.fold(title, stat || "") : null;
-    var details = made ? made.details : node("details", "card fold");
+    var details = made ? made.details : node("details", "card fold dx-card");
     if (!made) {
       var summary = node("summary", "");
       summary.appendChild(node("span", "fold-title", title));

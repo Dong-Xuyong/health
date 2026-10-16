@@ -104,7 +104,7 @@
       });
       return section;
     }
-    section = node("section", extra ? "card " + extra : "card");
+    section = node("section", extra ? "card dx-card " + extra : "card dx-card");
     section.appendChild(node("h3", "", title));
     return section;
   }

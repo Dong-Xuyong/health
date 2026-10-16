@@ -5,25 +5,27 @@
 }
 
 #program details {
-  border: 1px solid hsl(var(--border));
-  border-radius: 12px;
-  background: hsl(var(--card));
+  border: 1px solid var(--dx-border);
+  border-radius: var(--dx-radius-sm);
+  background: var(--dx-card);
+  color: var(--dx-text);
 }
 
 #program .tp-week,
 #program .tp-session {
   margin: 0 8px 8px;
-  background: hsl(var(--background));
+  background: var(--dx-card-solid);
 }
 
 #program summary {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 40px;
+  min-height: 44px;
   padding: 6px 10px;
   cursor: pointer;
   list-style: none;
+  color: var(--dx-text);
 }
 
 #program summary::-webkit-details-marker { display: none; }
@@ -69,7 +71,7 @@
 #program .tp-body p {
   margin: 0;
   padding: 0 12px 8px 34px;
-  color: var(--text-dim);
+  color: var(--dx-muted);
   font-size: 0.82rem;
 }
 

@@ -587,7 +587,7 @@
 
   function fold(id, title, aside, open) {
     var details = document.createElement("details");
-    details.className = "fold";
+    details.className = "fold dx-card";
     if (id) details.id = id;
     if (open) details.open = true;
     var summary = document.createElement("summary");
@@ -640,7 +640,7 @@
     if (!demo && view.active === 0 && view.rest === 0 && !view.weights.length) {
       els.main.appendChild(node(
         "section",
-        "card empty",
+        "card empty dx-card",
         "Connect GitHub to load workouts. Nothing is edited on this page."
       ));
     }

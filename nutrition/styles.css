@@ -1,39 +1,9 @@
 body {
-  --tint: 152 55% 40%;
-  --tint2: 168 70% 42%;
-  font-family: var(--font-sans);
-  color: var(--ink);
-  background:
-    radial-gradient(1200px 420px at 50% -120px, hsl(var(--tint) / 0.16), transparent 70%),
-    var(--bg);
-  background-attachment: fixed;
-  max-width: 640px;
-  margin: 0 auto;
-  padding: 0 max(16px, env(safe-area-inset-right)) 32px max(16px, env(safe-area-inset-left));
-  transition: background 0.4s ease;
-}
-
-header {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  min-height: calc(52px + env(safe-area-inset-top));
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: 6px;
-  background: hsl(var(--nav-glass-bg));
-  backdrop-filter: blur(var(--nav-glass-blur)) saturate(var(--nav-glass-saturate));
-  -webkit-backdrop-filter: blur(var(--nav-glass-blur)) saturate(var(--nav-glass-saturate));
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
+  --tint: 152 45% 32%;
+  --tint2: 168 50% 28%;
+  font-family: var(--dx-font);
+  color: var(--dx-text);
+  background: transparent;
 }
 
 .view-nav {
@@ -56,32 +26,9 @@ header {
 }
 
 .view-nav a[aria-current="page"] {
-  background: linear-gradient(135deg, hsl(var(--tint)), hsl(var(--tint2)));
-  color: #fff;
+  background: var(--dx-accent);
+  color: var(--dx-accent-fg);
   border-color: transparent;
-}
-
-header h1 {
-  margin: 0;
-  font-size: 1.2rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-#sync-label {
-  flex: 1;
-  min-width: 0;
-  text-align: right;
-  font-size: 0.78rem;
-  color: var(--text-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-header [data-dong-theme-toggle] {
-  position: static;
-  flex-shrink: 0;
 }
 
 .hero {
@@ -90,10 +37,8 @@ header [data-dong-theme-toggle] {
   border-radius: 22px;
   padding: 18px 18px 14px;
   margin: 0 0 14px;
-  background:
-    linear-gradient(135deg, hsl(var(--tint) / 0.3), hsl(var(--tint2) / 0.18)),
-    var(--bg-card);
-  border: 1px solid hsl(var(--tint) / 0.25);
+  background: var(--dx-card);
+  border: 1px solid var(--dx-border);
 }
 
 .hero-top {
@@ -181,10 +126,10 @@ header [data-dong-theme-toggle] {
 }
 
 .card {
-  background: var(--bg-card);
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  padding: 14px 16px;
+  background: var(--dx-card);
+  border: 1px solid var(--dx-border);
+  border-radius: var(--dx-radius);
+  padding: 12px 8px;
   margin: 0 0 12px;
 }
 
@@ -332,11 +277,11 @@ header [data-dong-theme-toggle] {
 }
 
 .toggle button.on {
-  background: linear-gradient(135deg, hsl(var(--tint)), hsl(var(--tint2)));
-  color: #fff;
+  background: var(--dx-accent);
+  color: var(--dx-accent-fg);
   border-color: transparent;
   font-weight: 600;
-  box-shadow: 0 6px 18px hsl(var(--tint) / 0.35);
+  box-shadow: none;
 }
 
 .chart-label {
@@ -363,58 +308,67 @@ ul.insights li {
 
 .heat-head {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  grid-template-columns: repeat(7, minmax(44px, 1fr));
+  gap: 1px;
   margin-bottom: 4px;
   font-size: 0.72rem;
-  color: var(--text-dim);
+  color: var(--dx-muted);
   text-align: center;
 }
 
 .heat {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  grid-template-columns: repeat(7, minmax(44px, 1fr));
+  gap: 1px;
 }
 
 .heat a {
+  min-width: 44px;
+  min-height: 44px;
   aspect-ratio: 1;
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   text-decoration: none;
-  color: inherit;
+  color: var(--dx-text);
   font-size: 0.75rem;
-  background: hsl(var(--muted));
+  font-weight: 600;
+  background: var(--dx-card-solid);
+  box-shadow: inset 0 0 0 1px var(--dx-border);
 }
 
 .heat a.green {
-  background: hsl(152 55% 40% / 0.85);
+  background: hsl(152 45% 30%);
   color: #fff;
+  box-shadow: none;
 }
 
 .heat a.yellow {
-  background: hsl(42 90% 52% / 0.9);
+  background: hsl(42 90% 48%);
   color: #1a1a1a;
+  box-shadow: none;
 }
 
 .heat a.red {
-  background: hsl(4 75% 55% / 0.85);
+  background: hsl(4 72% 40%);
   color: #fff;
+  box-shadow: none;
 }
 
 .heat a.grey {
-  background: hsl(var(--muted));
+  background: var(--dx-card-solid);
+  color: var(--dx-text);
 }
 
 .heat a.out {
-  opacity: 0.35;
+  opacity: 1;
 }
 
 .heat a.partial {
-  background: hsl(42 80% 52% / 0.55);
+  background: hsl(38 92% 42%);
   color: #1a1a1a;
+  box-shadow: none;
 }
 
 .heat a.today {
@@ -626,8 +580,8 @@ html.dark .chart .bar-surplus { fill: hsl(4 75% 58%); }
 }
 
 .day-strip button.active-day {
-  background: hsl(152 55% 40% / 0.9);
-  color: #fff;
+  background: var(--dx-accent);
+  color: var(--dx-accent-fg);
   border-color: transparent;
 }
 

@@ -63,7 +63,7 @@
 
   function fold(title, stat, key) {
     var made = window.SuiteUI && SuiteUI.fold ? SuiteUI.fold(title, stat || "") : null;
-    var card = made ? made.details : el("details", "card fold");
+    var card = made ? made.details : el("details", "card fold dx-card");
     var summary;
     if (!made) {
       summary = el("summary", "");
@@ -555,7 +555,7 @@
     }
     var list = fold("Injuries", String(items.length), "injuries");
     items.forEach(function (injury) {
-      var link = el("a", "card injury-link");
+      var link = el("a", "card injury-link dx-card");
       link.href = "#/injuries/" + injury.id;
       var top = el("div", "row-top");
       top.appendChild(el("h3", "", injury.area || "Untitled injury"));
@@ -1056,7 +1056,7 @@
     markTab(route.name);
     clear(els.main);
     if (!doc) {
-      els.main.appendChild(el("section", "card empty", ""));
+      els.main.appendChild(el("section", "card empty dx-card", ""));
       els.main.lastChild.appendChild(el("p", "", hasToken() ? "Loading…" : "Demo data is unavailable."));
       return;
     }

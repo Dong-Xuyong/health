@@ -100,7 +100,7 @@
   }
 
   function fold(title, stat) {
-    var details = el("details", "card fold");
+    var details = el("details", "card fold dx-card");
     var summary = el("summary", "");
     var viz = el("span", "fold-viz");
     var statEl = el("span", "fold-stat", stat || "");

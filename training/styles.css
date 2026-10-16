@@ -1,58 +1,9 @@
 body {
   --tint: 210 68% 42%;
   --tint2: 199 62% 48%;
-  font-family: var(--font-sans);
-  color: var(--ink);
-  background:
-    radial-gradient(1200px 420px at 50% -120px, hsl(var(--tint) / 0.18), transparent 70%),
-    var(--bg);
-  background-attachment: fixed;
-  max-width: 640px;
-  margin: 0 auto;
-  padding:
-    0
-    max(16px, env(safe-area-inset-right))
-    calc(32px + env(safe-area-inset-bottom))
-    max(16px, env(safe-area-inset-left));
-  transition: background 0.4s ease;
-}
-
-header {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: calc(52px + env(safe-area-inset-top));
-  padding-top: env(safe-area-inset-top);
-  background: hsl(var(--nav-glass-bg));
-  backdrop-filter: blur(var(--nav-glass-blur)) saturate(var(--nav-glass-saturate));
-  -webkit-backdrop-filter: blur(var(--nav-glass-blur)) saturate(var(--nav-glass-saturate));
-}
-
-header h1 {
-  margin: 0;
-  flex-shrink: 0;
-  font-size: 1.2rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-#sync-label {
-  flex: 1;
-  min-width: 0;
-  text-align: right;
-  font-size: 0.78rem;
-  color: var(--text-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-header [data-dong-theme-toggle] {
-  position: static;
-  flex-shrink: 0;
+  font-family: var(--dx-font);
+  color: var(--dx-text);
+  background: transparent;
 }
 
 .hero {
@@ -61,10 +12,8 @@ header [data-dong-theme-toggle] {
   border-radius: 22px;
   padding: 18px 16px 16px;
   margin: 0 0 14px;
-  background:
-    linear-gradient(135deg, hsl(var(--tint) / 0.3), hsl(var(--tint2) / 0.18)),
-    var(--bg-card);
-  border: 1px solid hsl(var(--tint) / 0.25);
+  background: var(--dx-card);
+  border: 1px solid var(--dx-border);
 }
 
 .hero[hidden] {
@@ -107,7 +56,7 @@ header [data-dong-theme-toggle] {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: hsl(var(--tint));
+  color: var(--dx-accent);
 }
 
 .pr-banner ul {
@@ -122,10 +71,10 @@ header [data-dong-theme-toggle] {
 }
 
 .card {
-  background: var(--bg-card);
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  padding: 14px 16px;
+  background: var(--dx-card);
+  border: 1px solid var(--dx-border);
+  border-radius: var(--dx-radius);
+  padding: 14px 12px;
   margin: 0 0 12px;
 }
 
@@ -173,12 +122,12 @@ header [data-dong-theme-toggle] {
 }
 
 .status-hit {
-  color: hsl(var(--tint));
+  color: var(--dx-accent);
   font-weight: 700;
 }
 
 .status-stalled {
-  color: hsl(32 75% 40%);
+  color: hsl(28 78% 30%);
   font-weight: 700;
 }
 
@@ -230,11 +179,11 @@ html.dark .status-stalled {
 }
 
 .toggle button.on {
-  background: linear-gradient(135deg, hsl(var(--tint)), hsl(var(--tint2)));
-  color: #fff;
+  background: var(--dx-accent);
+  color: var(--dx-accent-fg);
   border-color: transparent;
   font-weight: 600;
-  box-shadow: 0 6px 18px hsl(var(--tint) / 0.35);
+  box-shadow: none;
 }
 
 .chart svg {
