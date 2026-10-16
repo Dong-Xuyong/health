@@ -10,8 +10,8 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥗</text></svg>" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Encode+Sans:wght@400;500;600;700&display=swap" />
   <link rel="stylesheet" href="dong-ui/theme.css?v=1" />
-  <link rel="stylesheet" href="styles.css?v=5" />
-  <link rel="stylesheet" href="/health/suite.css?v=1" />
+  <link rel="stylesheet" href="styles.css?v=6" />
+  <link rel="stylesheet" href="/health/suite.css?v=2" />
   <script src="dong-ui/theme.js"></script>
 </head>
 <body>
@@ -28,19 +28,25 @@
     <button type="button" data-dong-theme-toggle aria-label="Toggle color theme"></button>
   </header>
   <nav class="suite-nav" aria-label="Health sections">
-    <a href="/health/">Health</a>
-    <a href="/health/training/">Training</a>
     <a href="/health/nutrition/" aria-current="page">Nutrition</a>
+    <a href="/health/training/">Training</a>
+    <a href="/health/overview/">Health</a>
   </nav>
+  <p id="demo-banner" class="banner" role="status" hidden><strong>Demo data</strong> <span>Sample meals. Nothing is saved.</span></p>
   <section id="hero" class="hero">
-    <div class="hero-top">
-      <div id="ring" class="ring" aria-hidden="true"></div>
-      <div class="hero-text">
-        <h2 id="period-label"></h2>
-        <p id="remain-line"></p>
-        <p id="score-line"></p>
+    <details class="fold hero-fold">
+      <summary>
+        <span class="fold-title" id="period-label"></span>
+        <span class="fold-viz" id="hero-viz"></span>
+        <span class="fold-stat" id="remain-line"></span>
+      </summary>
+      <div class="hero-top">
+        <div id="ring" class="ring" aria-hidden="true"></div>
+        <div class="hero-text">
+          <p id="score-line"></p>
+        </div>
       </div>
-    </div>
+    </details>
     <div class="hero-foot">
       <div class="period-nav">
         <button type="button" id="prev" aria-label="Previous day">‹</button>
@@ -53,8 +59,9 @@
   <footer id="connect" hidden>
     <button type="button" id="btn-connect">Connect GitHub to sync</button>
   </footer>
+  <script src="/health/suite-ui.js?v=1"></script>
   <script src="dong-ui/gh-sync.js?v=1"></script>
   <script src="core.js?v=5"></script>
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>

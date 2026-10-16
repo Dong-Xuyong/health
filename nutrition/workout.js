@@ -646,7 +646,7 @@
     }
 
     var weightAside = lastWeight ? kgText(lastWeight.weight) + " kg" : "No weigh-ins";
-    var weight = fold("weight-fold", "Weight", weightAside, true);
+    var weight = fold("weight-fold", "Weight", weightAside, false);
     weight.body.appendChild(weightChart(view));
     if (view.startWeight || view.goalWeight) {
       var bits = [];
@@ -658,22 +658,21 @@
     els.main.appendChild(weight.details);
 
     var deficitAside = view.avgDeficit == null ? "No average" : NutritionCore.formatDeficit(pointBand(view.avgDeficit));
-    var deficit = fold("deficit-fold", "Deficit", deficitAside, true);
+    var deficit = fold("deficit-fold", "Deficit", deficitAside, false);
     deficit.body.appendChild(deficitChart(view));
     deficit.body.appendChild(methodNote(view));
     els.main.appendChild(deficit.details);
 
-    var sessions = fold("sessions-fold", "Sessions", view.active + " active", true);
+    var sessions = fold("sessions-fold", "Sessions", view.active + " active", false);
     sessions.body.appendChild(dayStrip(view.rows));
     sessions.body.appendChild(node(
       "p",
       "hint",
-      "Green is an active day and grey is a rest day. Faded days have nothing logged. A dashed outline is left out of the averages. Open a day for each exercise."
+      "Green is active, grey is rest. Dashed days are left out."
     ));
     var ordered = view.rows.slice().reverse();
     ordered.forEach(function (row, index) {
       var card = sessionCard(row);
-      if (index === 0) card.open = true;
       sessions.body.appendChild(card);
     });
     els.main.appendChild(sessions.details);

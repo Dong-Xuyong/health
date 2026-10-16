@@ -430,7 +430,10 @@ html.dark .status-stalled {
 }
 
 .session-toggle {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
   width: 100%;
   min-height: 44px;
   margin: 0;
@@ -439,6 +442,13 @@ html.dark .status-stalled {
   border-radius: 12px;
   background: transparent;
   text-align: left;
+  list-style: none;
+  cursor: pointer;
+  color: inherit;
+}
+
+details.session > summary::-webkit-details-marker {
+  display: none;
 }
 
 .session-toggle[aria-expanded="true"] {

@@ -2,11 +2,13 @@
 
 Health is a three-tab app at [dong-xuyong.github.io/health](https://dong-xuyong.github.io/health/).
 
-- **Health** (`/health/`) is this page: injuries, a sleep-target override, and read-only sleep from the journal.
-- **Training** (`/health/training/`) lives in a sub-folder and still reads its own progress-sync file (`streetlifting.json`).
-- **Nutrition** (`/health/nutrition/`, plus `workout.html`) lives in a sub-folder and still reads its own progress-sync file (`nutrition.json`).
+Tabs, in order: **Nutrition**, **Training**, **Health**.
 
-`/streetlifting/` and `/nutrition/` redirect here.
+- **Nutrition** (`/health/` and `/health/nutrition/`, plus `workout.html`) reads `nutrition.json`. `/health/` redirects there and keeps the query string and hash. Old health hashes (`#/`, `#/injuries`, `#/trends`, `#/settings`) redirect to the overview.
+- **Training** (`/health/training/`) reads `streetlifting.json`, including the full program (`blocks` / `weeks` / `sessions`, or a flat `days` list grouped into weeks).
+- **Health** (`/health/overview/`) is injuries, a sleep-target override, and read-only sleep from the journal.
+
+`/streetlifting/` still redirects to `/health/training/`. `/nutrition/` still redirects to `/health/nutrition/`.
 
 The Health page writes one file, `health.json`, in the private repo `Dong-Xuyong/progress-sync`. It reads `journal.json`, `nutrition.json`, and `streetlifting.json` and never writes them.
 
@@ -16,7 +18,9 @@ With no sync token the page shows demo data and a **Demo data** banner. Demo dat
 
 ## Files
 
-- `index.html`, `styles.css`, `suite.css`, `app.js` — the page and the shared suite nav
+- `index.html` — redirects `/health/` to Nutrition (or to `/health/overview/` for an old health hash)
+- `overview/index.html` — the Health overview
+- `styles.css`, `suite.css`, `suite-ui.js`, `app.js` — the overview page and the shared suite chrome
 - `manifest.webmanifest` — home-screen manifest; `scope` `./` covers Training and Nutrition
 - `core.js` — merge, normalize, and the chart math (no DOM)
 - `demo.js` — fake EXAMPLE injuries, sleep, meals, and training

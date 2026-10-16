@@ -29,7 +29,9 @@
   var chartRange = "3m";
   var sessionChip = "all";
   var openDates = {};
+  var openFolds = {};
   var loading = false;
+  var demo = false;
 
   function todayISO() {
     var d = new Date();
@@ -75,10 +77,30 @@
     return document.createElementNS(SVGNS, tag);
   }
 
-  function card(title) {
+  function card(title, stat) {
+    var made;
+    var key = "t:" + String(title || "");
+    if (window.SuiteUI && SuiteUI.fold) {
+      made = SuiteUI.fold(title, stat || "");
+      if (openFolds[key]) made.details.open = true;
+      made.details.addEventListener("toggle", function () {
+        if (made.details.open) openFolds[key] = true;
+        else delete openFolds[key];
+      });
+      return made.details;
+    }
     var section = node("section", "card");
     if (title) section.appendChild(node("h3", "", title));
     return section;
+  }
+
+  function foldStat(section, text) {
+    var nodeStat = section && section.querySelector ? section.querySelector(".fold-stat") : null;
+    if (nodeStat) nodeStat.textContent = text || "";
+  }
+
+  function foldViz(section) {
+    return section && section.querySelector ? section.querySelector(":scope > summary .fold-viz") : null;
   }
 
   function asArray(value) {
@@ -413,38 +435,90 @@
     return lifts[0];
   }
 
+  function pctLabel(n) {
+    var v = n <= 1 ? n * 100 : n;
+    return fmtKg(v) + "%";
+  }
+
+  function programLoad(set) {
+    var kg = typeof set.kg === "number" && isFinite(set.kg) ? set.kg : null;
+    var kgMax = typeof set.kgMax === "number" && isFinite(set.kgMax) ? set.kgMax : null;
+    var pct = typeof set.pct === "number" && isFinite(set.pct) ? set.pct : null;
+    var pctMin = typeof set.pctMin === "number" && isFinite(set.pctMin) ? set.pctMin : null;
+    var pctMax = typeof set.pctMax === "number" && isFinite(set.pctMax) ? set.pctMax : null;
+    if (kg !== null && kgMax !== null && kgMax !== kg) return fmtKg(kg) + "-" + fmtKg(kgMax) + " kg";
+    if (kg !== null) return fmtKg(kg) + " kg";
+    if (pctMin === null) pctMin = pct;
+    if (pctMin === null) return "";
+    if (pctMax !== null && pctMax !== pctMin) return pctLabel(pctMin) + "-" + pctLabel(pctMax);
+    return pctLabel(pctMin);
+  }
+
   function programSetText(set) {
-    var kg;
-    var kgMax;
     var load;
     var setsText;
     var repsText;
+    var work;
     if (!set || typeof set !== "object") return "";
-    kg = typeof set.kg === "number" && isFinite(set.kg) ? set.kg : null;
-    kgMax = typeof set.kgMax === "number" && isFinite(set.kgMax) ? set.kgMax : null;
-    if (kg !== null && kgMax !== null && kgMax !== kg) load = fmtKg(kg) + "-" + fmtKg(kgMax) + " kg";
-    else if (kg !== null) load = fmtKg(kg) + " kg";
-    else load = "\u2014";
-    setsText = typeof set.sets === "number" && isFinite(set.sets) ? fmtKg(set.sets) : "\u2014";
-    repsText = typeof set.reps === "number" && isFinite(set.reps) ? fmtKg(set.reps) : "\u2014";
-    return setsText + " x " + repsText + " @ " + load;
+    load = programLoad(set);
+    setsText = typeof set.sets === "number" && isFinite(set.sets) ? fmtKg(set.sets) : "";
+    repsText = typeof set.reps === "number" && isFinite(set.reps) ? fmtKg(set.reps) : "";
+    if (setsText && repsText) work = setsText + " x " + repsText;
+    else if (repsText) work = repsText + " reps";
+    else if (setsText) work = setsText + " sets";
+    else work = "";
+    if (work && load) return work + " @ " + load;
+    return work || load || "\u2014";
   }
 
   function paintPrograms() {
-    var order = ["pullup", "squat"];
+    var order = ["pullup", "squat", "dip", "muscleup"];
+    var seen = {};
+    var keys = [];
     var i;
-    var view;
-    if (typeof Street.programView !== "function") return;
+    var tree;
+    var programs;
+    if (typeof Street.programTree !== "function") return;
     for (i = 0; i < order.length; i++) {
-      view = null;
-      try {
-        view = Street.programView(file, order[i]);
-      } catch (err) {
-        view = null;
-      }
-      if (!view || !view.days || !view.days.length) continue;
-      els.main.appendChild(programCard(view, order[i]));
+      seen[order[i]] = true;
+      keys.push(order[i]);
     }
+    programs = file && file.programs && typeof file.programs === "object" ? file.programs : null;
+    if (programs) {
+      Object.keys(programs).forEach(function (key) {
+        if (seen[key]) return;
+        seen[key] = true;
+        keys.push(key);
+      });
+    }
+    for (i = 0; i < keys.length; i++) {
+      tree = null;
+      try {
+        tree = Street.programTree(file, keys[i]);
+      } catch (err) {
+        tree = null;
+      }
+      if (!tree || !tree.blocks || !tree.blocks.length) continue;
+      els.main.appendChild(programCard(tree, keys[i]));
+    }
+  }
+
+  function nestFold(title, stat, key) {
+    var made = window.SuiteUI && SuiteUI.fold ? SuiteUI.fold(title, stat || "") : null;
+    var details = made ? made.details : node("details", "card fold");
+    if (!made) {
+      var summary = node("summary", "");
+      summary.appendChild(node("span", "fold-title", title));
+      summary.appendChild(node("span", "fold-stat", stat || ""));
+      details.appendChild(summary);
+    }
+    if (key && openFolds[key]) details.open = true;
+    details.addEventListener("toggle", function () {
+      if (!key) return;
+      if (details.open) openFolds[key] = true;
+      else delete openFolds[key];
+    });
+    return details;
   }
 
   function programCard(view, lift) {
@@ -452,65 +526,73 @@
     var total = Number(view.total);
     var pct;
     var name = view.name && String(view.name).trim() ? String(view.name).trim() : label(lift);
-    var section = node("section", "card program");
-    var bar;
-    var fill;
-    var meta;
-    var list;
-    var d;
-    var day;
-    var dayEl;
-    var head;
-    var sets;
-    var s;
-    var finished = true;
+    var section;
+    var viz;
+    var b;
+    var block;
     if (!isFinite(doneCount) || doneCount < 0) doneCount = 0;
-    if (!isFinite(total) || total < 0) total = view.days.length;
+    if (!isFinite(total) || total < 0) total = 0;
     pct = total ? (doneCount / total) * 100 : 0;
     if (!isFinite(pct) || pct < 0) pct = 0;
     if (pct > 100) pct = 100;
+    section = nestFold(name, doneCount + " / " + total, "prog:" + lift);
+    section.classList.add("program");
     section.setAttribute("aria-label", name);
-    section.appendChild(node("h3", "", name));
+    viz = foldViz(section);
+    if (viz && window.SuiteUI) viz.appendChild(SuiteUI.bar(pct, name + " progress"));
     if (typeof view.note === "string" && view.note.trim()) {
       section.appendChild(node("p", "goal-note", view.note.trim()));
     }
-    bar = node("div", "bar");
-    bar.setAttribute("role", "progressbar");
-    bar.setAttribute("aria-valuemin", "0");
-    bar.setAttribute("aria-valuemax", "100");
-    bar.setAttribute("aria-valuenow", String(Math.round(pct)));
-    bar.setAttribute("aria-label", name + " progress");
-    fill = document.createElement("i");
-    fill.style.width = (Math.round(pct * 10) / 10) + "%";
-    bar.appendChild(fill);
-    section.appendChild(bar);
-    meta = node("p", "goal-meta");
-    meta.appendChild(node("span", "", String(doneCount) + " / " + String(total)));
-    section.appendChild(meta);
-    list = node("div", "prog-days");
-    for (d = 0; d < view.days.length; d++) {
-      day = view.days[d];
-      if (!day || (day.status !== "done" && day.status !== "next")) continue;
-      if (day.status === "next") finished = false;
-      dayEl = node("div", "prog-day" + (day.status === "next" ? " is-next" : day.status === "upcoming" ? " is-upcoming" : " is-done"));
-      if (day.status === "next") dayEl.setAttribute("aria-current", "step");
-      head = node("p", "prog-label");
-      head.appendChild(document.createTextNode(day.label ? String(day.label) : "Day " + (d + 1)));
-      if (day.status === "next") head.appendChild(node("span", "tag", "Next"));
-      dayEl.appendChild(head);
-      if (day.status === "done" && day.done) dayEl.appendChild(node("p", "prog-when", String(day.done)));
-      if (day.status === "next") {
-        sets = Array.isArray(day.sets) ? day.sets : [];
-        for (s = 0; s < sets.length; s++) {
-          if (!sets[s] || typeof sets[s] !== "object") continue;
-          dayEl.appendChild(node("p", "set-line", programSetText(sets[s])));
-        }
-      }
-      list.appendChild(dayEl);
+    if (view.start) section.appendChild(node("p", "prog-when", "Start " + view.start));
+    for (b = 0; b < view.blocks.length; b++) {
+      block = view.blocks[b];
+      if (!block) continue;
+      section.appendChild(programBlock(block, lift + ":" + b));
     }
-    section.appendChild(list);
-    if (finished) section.appendChild(node("p", "prog-finished", "Program finished."));
+    if (total && doneCount >= total) section.appendChild(node("p", "prog-finished", "Program finished."));
     return section;
+  }
+
+  function programBlock(block, key) {
+    var doneCount = Number(block.doneCount) || 0;
+    var total = Number(block.total) || 0;
+    var pct = total ? (doneCount / total) * 100 : 0;
+    var details = nestFold(block.label || "Block", doneCount + " / " + total, "block:" + key);
+    var viz = foldViz(details);
+    var w;
+    if (viz && window.SuiteUI) viz.appendChild(SuiteUI.bar(pct, (block.label || "Block") + " progress"));
+    for (w = 0; w < (block.weeks || []).length; w++) {
+      details.appendChild(programWeek(block.weeks[w], key + ":" + w));
+    }
+    return details;
+  }
+
+  function programWeek(week, key) {
+    var doneCount = Number(week.doneCount) || 0;
+    var total = Number(week.total) || 0;
+    var details = nestFold(week.label || "Week", doneCount + " / " + total, "week:" + key);
+    var s;
+    var sessions = week.sessions || [];
+    for (s = 0; s < sessions.length; s++) details.appendChild(programSession(sessions[s], key + ":" + s));
+    return details;
+  }
+
+  function programSession(session, key) {
+    var sets = Array.isArray(session.sets) ? session.sets : [];
+    var stat = session.done ? String(session.done) : (sets.length ? programSetText(sets[0]) : "");
+    var title = session.label || "Session";
+    var details = nestFold(title, stat, "sessprog:" + key);
+    var s;
+    if (session.status === "next") details.classList.add("is-next");
+    if (session.status === "next") details.setAttribute("aria-current", "step");
+    if (session.note) details.appendChild(node("p", "prog-when", session.note));
+    if (session.status === "next") details.appendChild(node("p", "prog-when", "Next"));
+    if (!sets.length) details.appendChild(node("p", "set-line", "No sets."));
+    for (s = 0; s < sets.length; s++) {
+      if (!sets[s] || typeof sets[s] !== "object") continue;
+      details.appendChild(node("p", "set-line", programSetText(sets[s])));
+    }
+    return details;
   }
 
   function repBlock(lift, today) {
@@ -771,6 +853,7 @@
       if (weekTotal(weeks[i]) !== 0) allZero = false;
     }
     if (!weeks.length || allZero) {
+      foldStat(section, "0");
       section.appendChild(node("p", "empty-line", "No calories yet"));
       els.main.appendChild(section);
       return;
@@ -783,6 +866,12 @@
     }
     if (max > 0) section.appendChild(kcalChart(weeks, keys, max, colors));
     last = weeks[weeks.length - 1];
+    foldStat(section, fmtKg(weekTotal(last)) + " kcal");
+    (function () {
+      var viz = foldViz(section);
+      if (!viz || !window.SuiteUI) return;
+      viz.appendChild(SuiteUI.spark(weeks.map(function (week) { return weekTotal(week); }), "Weekly calories"));
+    })();
     section.appendChild(node("p", "kcal-now", "This week " + fmtKg(weekTotal(last)) + " kcal"));
     if (keys.length) section.appendChild(kcalLegend(weeks, keys, colors));
     els.main.appendChild(section);
@@ -930,9 +1019,11 @@
     var streak = Street.streak(file, today) || {};
     var month = Street.monthCount(file, today);
     var fresh = asArray(Street.latestDayPrs(file));
+    var fold = nestFold("Training", countText(month) + " this month", "hero");
     var stats = node("div", "stats");
     els.hero.hidden = false;
     els.hero.textContent = "";
+    fold.classList.add("hero-fold");
     [
       [countText(streak.weeks), "week streak"],
       [countText(month), "sessions this month"],
@@ -943,55 +1034,50 @@
       stat.appendChild(node("p", "stat-label", pair[1]));
       stats.appendChild(stat);
     });
-    els.hero.appendChild(stats);
-    if (!fresh.length) return;
-    var banner = node("div", "pr-banner");
-    var list = node("ul", "");
-    banner.appendChild(node("p", "kicker", "New PR"));
-    fresh.forEach(function (item) {
-      if (!item) return;
-      list.appendChild(node("li", "", label(item.lift) + " \u00b7 " + kindName(item.kind) + " " + prValueText(item)));
-    });
-    banner.appendChild(list);
-    els.hero.appendChild(banner);
+    fold.appendChild(stats);
+    if (fresh.length) {
+      var banner = node("div", "pr-banner");
+      var list = node("ul", "");
+      banner.appendChild(node("p", "kicker", "New PR"));
+      fresh.forEach(function (item) {
+        if (!item) return;
+        list.appendChild(node("li", "", label(item.lift) + " \u00b7 " + kindName(item.kind) + " " + prValueText(item)));
+      });
+      banner.appendChild(list);
+      fold.appendChild(banner);
+      foldStat(fold, label(fresh[0].lift) + " PR");
+    }
+    els.hero.appendChild(fold);
   }
 
   function paintGoals() {
     var goals = asArray(Street.goalCards(file, todayISO()));
     if (!goals.length) {
-      els.main.appendChild(node("section", "card empty", "Tell Grok a goal."));
+      var empty = card("Goals", "0");
+      empty.appendChild(node("p", "empty-line", "Tell Grok a goal."));
+      els.main.appendChild(empty);
       return;
     }
     goals.forEach(function (goal) {
       var pct;
       var status;
       var section;
-      var meta;
-      var bar;
-      var fill;
+      var viz;
       if (!goal) return;
       pct = barPct(goal);
       status = goalStatus(goal);
-      section = node("section", "card goal" + (goal.hit ? " is-hit" : goal.stalled ? " is-stalled" : ""));
+      section = card(
+        label(goal.lift),
+        (goal.current == null ? "\u2014" : fmtKg(goal.current)) + "/" + fmtKg(goal.target) + " kg"
+      );
+      section.classList.add("goal");
+      if (goal.hit) section.classList.add("is-hit");
+      if (goal.stalled) section.classList.add("is-stalled");
       section.setAttribute("aria-label", "Goal");
-      section.appendChild(node("h3", "", label(goal.lift)));
+      viz = foldViz(section);
+      if (viz && window.SuiteUI) viz.appendChild(SuiteUI.bar(pct, label(goal.lift) + " progress"));
       section.appendChild(node("p", "goal-target", fmtKg(goal.target) + " kg x " + fmtReps(goal.reps)));
-      bar = node("div", "bar");
-      bar.setAttribute("role", "progressbar");
-      bar.setAttribute("aria-valuemin", "0");
-      bar.setAttribute("aria-valuemax", "100");
-      bar.setAttribute("aria-valuenow", String(Math.round(pct)));
-      bar.setAttribute("aria-label", label(goal.lift) + " progress");
-      fill = document.createElement("i");
-      fill.style.width = (Math.round(pct * 10) / 10) + "%";
-      bar.appendChild(fill);
-      section.appendChild(bar);
-      meta = node("p", "goal-meta");
-      meta.appendChild(node("span", "", (goal.current == null ? "\u2014" : fmtKg(goal.current)) + " / " + fmtKg(goal.target) + " kg"));
-      if (status) {
-        meta.appendChild(node("span", status === "Hit" ? "status-hit" : status === "Stalled" ? "status-stalled" : "", status));
-      }
-      section.appendChild(meta);
+      if (status) section.appendChild(node("p", "goal-meta", status));
       if (typeof goal.note === "string" && goal.note.trim()) {
         section.appendChild(node("p", "goal-note", goal.note.trim()));
       }
@@ -1012,9 +1098,10 @@
     var lifts = activeLifts();
     var lift = selectedLift(lifts);
     var range = currentRange();
-    var section = card("Progress");
+    var section = card("Progress", "");
     var points;
     var drawn;
+    var viz;
     section.appendChild(makeTabs(lifts.map(function (slug) {
       return { value: slug, text: label(slug) };
     }), lift, function (value) {
@@ -1026,6 +1113,11 @@
       render();
     }));
     points = seriesPoints(lift, range, today);
+    foldStat(section, points.length ? fmtE1(points[points.length - 1].y) : "\u2014");
+    viz = foldViz(section);
+    if (viz && window.SuiteUI && points.length > 1) {
+      viz.appendChild(SuiteUI.spark(points.map(function (point) { return point.y; }), label(lift) + " e1RM"));
+    }
     if (!points.length) {
       section.appendChild(node("p", "empty-line", "No sets yet."));
     } else {
@@ -1046,12 +1138,15 @@
 
   function paintStrength(today) {
     var range = currentRange();
-    var section = card("Total and relative strength");
+    var section = card("Strength", "");
     var pack = Street.totalSeries(file, range, today) || {};
     var points = asArray(pack.points);
     var missing = {};
     var last = latestByDate(points);
+    var strengthViz;
     var parts = last && last.parts && typeof last.parts === "object" ? last.parts : {};
+    foldStat(section, last && typeof last.total === "number" ? fmtKg(last.total) + " kg" : "\u2014");
+    strengthViz = foldViz(section);
     var tiles = node("div", "tiles");
     var totalPoints = [];
     var drawn;
@@ -1099,6 +1194,9 @@
       if (!point || typeof point.total !== "number" || !isFinite(point.total)) return;
       totalPoints.push({ date: point.date, y: point.total, pr: false });
     });
+    if (strengthViz && window.SuiteUI && totalPoints.length > 1) {
+      strengthViz.appendChild(SuiteUI.spark(totalPoints.map(function (point) { return point.y; }), "Total"));
+    }
     drawn = drawChart(totalPoints, "Streetlifting total, " + range, false, fmtKg);
     if (drawn) {
       section.appendChild(drawn.wrap);
@@ -1166,11 +1264,13 @@
     var pack = Street.heatmap(file, today) || {};
     var columns = asArray(pack.columns);
     var max = 0;
+    var activeDays = 0;
     var layout;
     var days;
     var scroller;
     var grid;
     if (!columns.length) {
+      foldStat(section, "0");
       section.appendChild(node("p", "empty-line", "No sessions yet."));
       els.main.appendChild(section);
       return;
@@ -1181,6 +1281,7 @@
       for (r = 0; r < cells.length && r < 7; r++) {
         var n = cells[r] && Number(cells[r].count);
         if (isFinite(n) && n > max) max = n;
+        if (isFinite(n) && n > 0) activeDays += 1;
       }
     });
     layout = node("div", "heat-layout");
@@ -1189,6 +1290,7 @@
     WEEKDAYS.forEach(function (name) {
       days.appendChild(node("span", "", name));
     });
+    foldStat(section, String(activeDays));
     scroller = node("div", "heat-scroll");
     grid = node("div", "heat-grid");
     columns.forEach(function (col) {
@@ -1221,7 +1323,7 @@
 
   function paintRecords() {
     var rows = asArray(Street.prs(file)).slice(0, 30);
-    var section = card("Records");
+    var section = card("Records", String(rows.length));
     if (!rows.length) {
       section.appendChild(node("p", "empty-line", "No records yet."));
       els.main.appendChild(section);
@@ -1246,7 +1348,7 @@
     var section;
     var prose;
     if (typeof text !== "string" || !text.trim()) return;
-    section = card("This week");
+    section = card("This week", "");
     prose = node("p", "prose", text.trim());
     section.appendChild(prose);
     els.main.appendChild(section);
@@ -1254,7 +1356,7 @@
 
   function paintSessions(today) {
     var dates = sessionDates();
-    var section = card("Sessions");
+    var section = card("Sessions", "");
     var opts = sessionChipOptions();
     var chip = selectedChip(opts);
     var bestCache = {};
@@ -1276,6 +1378,7 @@
     }
 
     if (!dates.length) {
+      foldStat(section, "0");
       section.appendChild(node("p", "empty-line", "No sessions yet."));
       els.main.appendChild(section);
       return;
@@ -1305,9 +1408,8 @@
       var lifts = session.lifts && typeof session.lifts === "object" ? session.lifts : {};
       var slugs = orderedLifts(lifts);
       var bits = [];
-      var block = node("div", "session");
+      var block = node("details", "session");
       var toggle;
-      var open = !!openDates[date];
       var detail;
       var showLifts = kind !== "act";
       var bw;
@@ -1344,22 +1446,18 @@
       if (typeof kcal === "number" && isFinite(kcal)) bits.push(Math.round(kcal) + " kcal");
       bw = session.bw;
       if (typeof bw === "number" && isFinite(bw)) bits.push(fmtKg(bw) + " kg");
-      toggle = button("session-toggle", "");
-      toggle.setAttribute("aria-expanded", open ? "true" : "false");
-      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) toggle.id = "sess-" + date;
+      toggle = node("summary", "session-toggle");
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) block.id = "sess-" + date;
       toggle.appendChild(node("span", "session-date", date));
       toggle.appendChild(node("span", "session-summary", bits.join(" \u00b7 ") || "No sets yet."));
-      toggle.addEventListener("click", function () {
-        if (openDates[date]) delete openDates[date];
-        else openDates[date] = true;
-        render();
-        var again = document.getElementById("sess-" + date);
-        if (again && again.focus) again.focus();
+      block.open = !!openDates[date];
+      block.addEventListener("toggle", function () {
+        if (block.open) openDates[date] = true;
+        else delete openDates[date];
       });
       block.appendChild(toggle);
-      if (open) {
-        detail = node("div", "session-detail");
-        if (typeof session.note === "string" && session.note.trim()) {
+      detail = node("div", "session-detail");
+      if (typeof session.note === "string" && session.note.trim()) {
           detail.appendChild(node("p", "prose", session.note.trim()));
         }
         if (typeof session.coach === "string" && session.coach.trim()) {
@@ -1405,12 +1503,81 @@
             }
           });
         }
-        block.appendChild(detail);
-      }
+      block.appendChild(detail);
       section.appendChild(block);
     });
+    foldStat(section, String(shown));
     if (!shown) section.appendChild(node("p", "empty-line", "No sessions yet."));
     els.main.appendChild(section);
+  }
+
+  function demoFile() {
+    return {
+      sessions: {
+        "2026-10-01": {
+          lifts: { pullup: [{ kg: 20, reps: 5 }, { kg: 20, reps: 4 }], squat: [{ kg: 80, reps: 5 }] },
+          liftKcal: 210,
+          bw: 75
+        },
+        "2026-10-06": {
+          lifts: { pullup: [{ kg: 22.5, reps: 4 }] },
+          activities: [{ type: "run", kcal: 180 }],
+          liftKcal: 150,
+          bw: 74.8
+        },
+        "2026-10-13": {
+          lifts: { squat: [{ kg: 85, reps: 5 }, { kg: 85, reps: 5 }] },
+          liftKcal: 240,
+          bw: 74.6
+        }
+      },
+      goals: [{ id: "g-demo", lift: "pullup", target: 40, reps: 5, note: "EXAMPLE target" }],
+      weeks: { "2026-W42": { coach: "EXAMPLE: next session stays light." } },
+      programs: {
+        pullup: {
+          name: "EXAMPLE pull-up wave",
+          note: "Sample plan. Nothing is saved.",
+          start: "2026-10-01",
+          blocks: [
+            {
+              name: "Wave 1",
+              weeks: [
+                {
+                  name: "Week 1",
+                  sessions: [
+                    { label: "Heavy", sets: [{ sets: 5, reps: 5, kg: 20 }], done: "2026-10-01" },
+                    { label: "Volume", sets: [{ sets: 4, reps: 6, kg: 17.5 }, { sets: 3, reps: 8, kg: 15 }] }
+                  ]
+                },
+                {
+                  name: "Week 2",
+                  sessions: [
+                    { label: "Heavy", sets: [{ sets: 5, reps: 4, kg: 22.5 }] },
+                    { label: "Volume", sets: [{ sets: 4, reps: 6, kg: 20 }] }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        squat: {
+          name: "EXAMPLE squat plan",
+          note: "Sample plan. Nothing is saved.",
+          start: "2026-10-01",
+          days: [
+            { label: "Week 1 · A", sets: [{ sets: 3, reps: 5, kg: 80, kgMax: 85 }], done: "2026-10-01" },
+            { label: "Week 1 · B", sets: [{ sets: 3, reps: 5, kg: 82.5 }] },
+            { label: "Week 2 · A", sets: [{ sets: 4, reps: 4, kg: 90 }] },
+            { label: "Week 2 · B", sets: [{ sets: 3, reps: 3, kg: 95 }] }
+          ]
+        }
+      }
+    };
+  }
+
+  function syncDemoBanner() {
+    var banner = document.getElementById("demo-banner");
+    if (banner) banner.hidden = !demo;
   }
 
   function paint() {
@@ -1443,7 +1610,9 @@
 
   function apply(payload) {
     if (!payload || typeof payload !== "object") return;
+    demo = false;
     file = payload;
+    syncDemoBanner();
     render();
   }
 
@@ -1489,12 +1658,24 @@
   function autoLoad() {
     showConnect();
     if (!hasToken()) {
-      if (els.sync) els.sync.textContent = "Not synced";
+      if (!demo) {
+        demo = true;
+        file = demoFile();
+        render();
+      }
+      syncDemoBanner();
+      if (els.sync) els.sync.textContent = "Demo";
       return;
     }
     if (loading) return;
     pull();
   }
+
+  if (!hasToken()) {
+    demo = true;
+    file = demoFile();
+  }
+  syncDemoBanner();
 
   if (!window.GhSync || typeof GhSync.load !== "function") {
     if (els.sync) els.sync.textContent = "GitHub sync failed to load.";
@@ -1512,6 +1693,7 @@
   });
 
   showConnect();
+  syncDemoBanner();
   render();
   setInterval(autoLoad, 60000);
   autoLoad();

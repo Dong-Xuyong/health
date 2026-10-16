@@ -34,6 +34,7 @@
   var gaveUp = false;
   var pendingRender = false;
   var trendDays = 28;
+  var openFolds = {};
 
   function hasToken() {
     try {
@@ -58,6 +59,30 @@
     if (className) node.className = className;
     if (text != null) node.textContent = text;
     return node;
+  }
+
+  function fold(title, stat, key) {
+    var made = window.SuiteUI && SuiteUI.fold ? SuiteUI.fold(title, stat || "") : null;
+    var card = made ? made.details : el("details", "card fold");
+    var summary;
+    if (!made) {
+      summary = el("summary", "");
+      summary.appendChild(el("span", "fold-title", title));
+      summary.appendChild(el("span", "fold-viz", ""));
+      summary.appendChild(el("span", "fold-stat", stat || ""));
+      card.appendChild(summary);
+    }
+    if (key && openFolds[key]) card.open = true;
+    card.addEventListener("toggle", function () {
+      if (!key) return;
+      if (card.open) openFolds[key] = true;
+      else delete openFolds[key];
+    });
+    return card;
+  }
+
+  function foldViz(card) {
+    return card && card.querySelector ? card.querySelector(":scope > summary .fold-viz") : null;
   }
 
   function clear(node) {
@@ -407,36 +432,53 @@
   }
 
   function renderSleepCard(today) {
-    var card = el("section", "card");
-    card.appendChild(el("h2", "", "Last night"));
-    card.appendChild(el("p", "lede", "From Journal, read only. Health does not store sleep."));
+    var target = Core.sleepTarget(doc, readError.nutrition ? null : reads.nutrition);
+    var night = readError.journal ? null : Core.sleepSeries(reads.journal, [today])[0];
+    var hours = night && typeof night.hours === "number" ? night.hours : null;
+    var stat = readError.journal ? "—" : (hours == null ? "—" : formatHours(hours) + " h");
+    var card = fold("Last night", stat, "sleep");
+    var viz = foldViz(card);
+    var series;
+    if (viz && window.SuiteUI && hours != null && target > 0) {
+      viz.appendChild(SuiteUI.ring((hours / target) * 100, formatHours(hours) + " of " + formatHours(target) + " h"));
+    }
+    if (!readError.journal) {
+      series = Core.sleepSeries(reads.journal, Core.dateWindow(today, 7));
+      if (viz && window.SuiteUI && series && series.length > 1) {
+        viz.appendChild(SuiteUI.spark(series.map(function (row) { return row && row.hours; }), "Sleep"));
+      }
+    }
     if (readError.journal) {
       card.appendChild(el("p", "warn", "Journal sleep unavailable"));
       return card;
     }
-    var night = Core.sleepSeries(reads.journal, [today])[0];
     var empty = !night || (night.hours == null && !night.bed && !night.wake && !night.note && night.quality == null);
     if (empty) {
-      card.appendChild(el("p", "", "No sleep logged in Journal for " + today + "."));
+      card.appendChild(el("p", "", "No sleep logged."));
       return card;
     }
-    card.appendChild(el("p", "stat-num", night.hours == null ? "—" : formatHours(night.hours) + " h"));
-    card.appendChild(el("p", "meta", "Bed " + (night.bed || "—") + " · Wake " + (night.wake || "—")));
+    card.appendChild(el("p", "meta", "Bed " + (night.bed || "—") + " · Wake " + (night.wake || "—") + " · target " + formatHours(target) + " h"));
     if (night.quality != null) card.appendChild(el("p", "meta", "Quality " + night.quality + " / 5"));
     if (night.note) card.appendChild(el("p", "note", night.note));
     return card;
   }
 
   function renderPainCard(injury, today) {
-    var card = el("section", "card pain-card");
     var todayCheck = checkinOn(injury, today);
     var shown = todayCheck ? todayCheck.pain : null;
-    var top = el("div", "pain-top");
-    top.appendChild(el("h3", "", injury.area || "Injury"));
-    var value = el("b", "pain-val", shown == null ? "—" : String(shown));
-    value.setAttribute("data-pain-value", injury.id);
-    top.appendChild(value);
-    card.appendChild(top);
+    var card = fold(injury.area || "Injury", shown == null ? "—" : String(shown) + "/10", "pain:" + injury.id);
+    var viz = foldViz(card);
+    var pains;
+    card.classList.add("pain-card");
+    (function () {
+      var stat = card.querySelector(".fold-stat");
+      if (stat) stat.setAttribute("data-pain-value", injury.id);
+    })();
+    if (viz && window.SuiteUI && shown != null) viz.appendChild(SuiteUI.bar((shown / 10) * 100, "Pain " + shown));
+    pains = (injury.checkins || []).filter(function (item) { return item && !item.deleted && typeof item.pain === "number"; });
+    if (viz && window.SuiteUI && pains.length > 1) {
+      viz.appendChild(SuiteUI.spark(pains.map(function (item) { return item.pain; }), "Pain"));
+    }
     card.appendChild(el("p", "muted", (injury.side || "n/a") + " · " + (injury.status || "active")));
     var slider = document.createElement("input");
     slider.type = "range";
@@ -475,9 +517,8 @@
     wrap.appendChild(renderSleepCard(today));
     var open = openInjuries();
     if (!open.length) {
-      var empty = el("section", "card");
-      empty.appendChild(el("h2", "", "Pain"));
-      empty.appendChild(el("p", "muted", "No active or recovering injuries."));
+      var empty = fold("Pain", "0", "pain-empty");
+      empty.appendChild(el("p", "muted", "No active injuries."));
       var add = el("button", "primary", "+ Injury");
       add.type = "button";
       add.setAttribute("data-action", "add-injury");
@@ -507,11 +548,12 @@
       return String(a.area).localeCompare(String(b.area));
     });
     if (!items.length) {
-      var empty = el("section", "card empty");
+      var empty = fold("Injuries", "0", "injuries");
       empty.appendChild(el("p", "", "No injuries yet."));
       wrap.appendChild(empty);
       return wrap;
     }
+    var list = fold("Injuries", String(items.length), "injuries");
     items.forEach(function (injury) {
       var link = el("a", "card injury-link");
       link.href = "#/injuries/" + injury.id;
@@ -523,8 +565,9 @@
       var detail = (injury.side || "n/a");
       if (latest && typeof latest.pain === "number") detail += " · pain " + latest.pain + " on " + latest.date;
       link.appendChild(el("p", "muted", detail));
-      wrap.appendChild(link);
+      list.appendChild(link);
     });
+    wrap.appendChild(list);
     return wrap;
   }
 
@@ -545,13 +588,12 @@
     top.appendChild(back);
     wrap.appendChild(top);
     if (!injury || injury.deleted) {
-      var missing = el("section", "card");
+      var missing = fold("Injury", "Missing", "missing");
       missing.appendChild(el("p", "", "That injury is not in this file."));
       wrap.appendChild(missing);
       return wrap;
     }
-    var card = el("section", "card");
-    card.appendChild(el("h2", "", injury.area || "Injury"));
+    var card = fold(injury.area || "Injury", injury.status || "active", "edit:" + injury.id);
     var area = document.createElement("input");
     area.value = injury.area || "";
     area.setAttribute("data-field", "area");
@@ -607,8 +649,11 @@
     card.appendChild(actions);
     wrap.appendChild(card);
 
-    var history = el("section", "card");
-    history.appendChild(el("h2", "", "Check-ins"));
+    var rows = live(injury.checkins).slice().sort(function (a, b) {
+      if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+      return Date.parse(a.updatedAt) < Date.parse(b.updatedAt) ? 1 : -1;
+    });
+    var history = fold("Check-ins", String(rows.length), "checks:" + injury.id);
     var form = document.createElement("form");
     form.setAttribute("data-action", "add-checkin");
     form.setAttribute("data-injury", injury.id);
@@ -637,10 +682,6 @@
     submitRow.appendChild(submit);
     form.appendChild(submitRow);
     history.appendChild(form);
-    var rows = live(injury.checkins).slice().sort(function (a, b) {
-      if (a.date !== b.date) return a.date < b.date ? 1 : -1;
-      return Date.parse(a.updatedAt) < Date.parse(b.updatedAt) ? 1 : -1;
-    });
     if (!rows.length) history.appendChild(el("p", "muted", "No check-ins yet."));
     rows.forEach(function (item) {
       var block = el("article", "checkin");
@@ -783,6 +824,7 @@
       stats.appendChild(statCard(avg + " / " + formatHours(target) + " h", "Sleep, last 7 days"));
       stats.appendChild(statCard(String(summary.nightsUnder7), "Nights under 7 h"));
     }
+    var snapshot = fold("Snapshot", "", "snapshot");
     stats.appendChild(statCard(signed(summary.weightChange, " kg"), "Weight change in window"));
     if (!summary.pain.length) stats.appendChild(statCard("—", "Pain vs 7 days ago"));
     summary.pain.forEach(function (item) {
@@ -791,10 +833,29 @@
       if (item.weekAgo != null) text += " (was " + item.weekAgo + ")";
       stats.appendChild(statCard(text, label));
     });
-    wrap.appendChild(stats);
+    snapshot.appendChild(stats);
+    (function () {
+      var viz = foldViz(snapshot);
+      if (viz && window.SuiteUI && !readError.journal) {
+        viz.appendChild(SuiteUI.spark(sleepRows.map(function (row) { return row.hours; }), "Sleep"));
+      }
+    })();
+    foldStat(snapshot);
+    (function () {
+      var stat = snapshot.querySelector(".fold-stat");
+      if (!stat) return;
+      if (readError.journal || summary.sleepAvg7 == null) stat.textContent = "—";
+      else stat.textContent = formatHours(summary.sleepAvg7) + " h";
+    })();
+    wrap.appendChild(snapshot);
 
-    var sleepCard = el("section", "card");
-    sleepCard.appendChild(el("h2", "", "Sleep"));
+    var sleepCard = fold("Sleep", readError.journal || summary.sleepAvg7 == null ? "—" : formatHours(summary.sleepAvg7) + " h", "trend-sleep");
+    (function () {
+      var viz = foldViz(sleepCard);
+      if (viz && window.SuiteUI && !readError.journal) {
+        viz.appendChild(SuiteUI.spark(sleepRows.map(function (row) { return row.hours; }), "Sleep hours"));
+      }
+    })();
     if (readError.journal) {
       sleepCard.appendChild(el("p", "warn", "Journal sleep unavailable"));
     } else {
@@ -828,8 +889,7 @@
     }
     wrap.appendChild(sleepCard);
 
-    var painCard = el("section", "card");
-    painCard.appendChild(el("h2", "", "Pain and training"));
+    var painCard = fold("Pain", summary.pain.length && summary.pain[0].today != null ? String(summary.pain[0].today) : "—", "trend-pain");
     if (readError.streetlifting) painCard.appendChild(el("p", "warn", "Training/Nutrition trends unavailable"));
     var injuries = openInjuries();
     var sets = trainingRows.map(function (row) { return row.sets; });
@@ -866,8 +926,7 @@
     }
     wrap.appendChild(painCard);
 
-    var weightCard = el("section", "card");
-    weightCard.appendChild(el("h2", "", "Body weight"));
+    var weightCard = fold("Weight", "", "trend-weight");
     if (readError.nutrition) {
       weightCard.appendChild(el("p", "warn", "Training/Nutrition trends unavailable"));
     } else {
@@ -879,6 +938,17 @@
         if (value > wMax) wMax = value;
         if (value < wMin) wMin = value;
       });
+      (function () {
+        var lastW = null;
+        var i;
+        var statEl = foldStat(weightCard);
+        var viz = foldViz(weightCard);
+        for (i = weights.length - 1; i >= 0; i--) {
+          if (typeof weights[i] === "number") { lastW = weights[i]; break; }
+        }
+        if (statEl) statEl.textContent = lastW == null ? "—" : String(Math.round(lastW * 10) / 10) + " kg";
+        if (viz && window.SuiteUI) viz.appendChild(SuiteUI.spark(weights, "Weight"));
+      })();
       if (wMin === Infinity) {
         weightCard.appendChild(el("p", "muted", "No weight in this window."));
       } else {
@@ -906,9 +976,21 @@
     return card;
   }
 
+  function foldStat(card) {
+    return card && card.querySelector ? card.querySelector(".fold-stat") : null;
+  }
+
   function macroCard(title, rows, key, targetKey, unit) {
-    var card = el("section", "card");
-    card.appendChild(el("h2", "", title));
+    var latest = null;
+    rows.forEach(function (row) {
+      if (row && typeof row[key] === "number") latest = row[key];
+    });
+    var card = fold(title, latest == null ? "—" : String(Math.round(latest)) + " " + unit, "macro:" + key);
+    (function () {
+      var viz = foldViz(card);
+      if (!viz || !window.SuiteUI || readError.nutrition) return;
+      viz.appendChild(SuiteUI.spark(rows.map(function (row) { return row[key]; }), title));
+    })();
     if (readError.nutrition) {
       card.appendChild(el("p", "warn", "Training/Nutrition trends unavailable"));
       return card;
@@ -935,11 +1017,11 @@
   }
 
   function renderSettings() {
-    var card = el("section", "card");
-    card.appendChild(el("h2", "", "Sleep target"));
-    card.appendChild(el("p", "lede", "This override is the only sleep field Health writes. Nights stay in Journal."));
     var target = Core.sleepTarget(doc, readError.nutrition ? null : reads.nutrition);
-    card.appendChild(el("p", "stat-num", formatHours(target) + " h"));
+    var card = fold("Sleep target", formatHours(target) + " h", "settings");
+    var shown = card.querySelector(".fold-stat");
+    if (shown) shown.setAttribute("data-sleep-stat", "1");
+    card.appendChild(el("p", "muted", "Override only. Nights stay in Journal."));
     var hint = el("p", "muted", targetHint());
     hint.id = "target-hint";
     card.appendChild(hint);
@@ -1019,7 +1101,7 @@
     pain = Math.max(0, Math.min(10, Math.round(pain)));
     upsertCheckin(injury, Core.lisbonToday(), pain, note ? note.value : "");
     var label = control("data-pain-value", id);
-    if (label) label.textContent = String(pain);
+    if (label) label.textContent = String(pain) + "/10";
   }
 
   function onInput(e) {
@@ -1028,7 +1110,7 @@
     var painId = target.getAttribute && target.getAttribute("data-pain-for");
     if (painId) {
       var label = control("data-pain-value", painId);
-      if (label) label.textContent = target.value;
+      if (label) label.textContent = target.value + "/10";
       commitPain(painId);
       return;
     }
@@ -1075,7 +1157,7 @@
       markDirty();
       var hint = document.getElementById("target-hint");
       if (hint) hint.textContent = targetHint();
-      var num = document.querySelector(".stat-num");
+      var num = document.querySelector("[data-sleep-stat]");
       if (num) num.textContent = formatHours(Core.sleepTarget(doc, readError.nutrition ? null : reads.nutrition)) + " h";
       return;
     }

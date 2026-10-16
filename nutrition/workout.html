@@ -10,8 +10,8 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Encode+Sans:wght@400;500;600;700&display=swap" />
   <link rel="stylesheet" href="dong-ui/theme.css?v=1" />
-  <link rel="stylesheet" href="styles.css?v=5" />
-  <link rel="stylesheet" href="/health/suite.css?v=1" />
+  <link rel="stylesheet" href="styles.css?v=6" />
+  <link rel="stylesheet" href="/health/suite.css?v=2" />
   <script src="dong-ui/theme.js"></script>
 </head>
 <body>
@@ -28,9 +28,9 @@
     <button type="button" data-dong-theme-toggle aria-label="Toggle color theme"></button>
   </header>
   <nav class="suite-nav" aria-label="Health sections">
-    <a href="/health/">Health</a>
-    <a href="/health/training/">Training</a>
     <a href="/health/nutrition/" aria-current="page">Nutrition</a>
+    <a href="/health/training/">Training</a>
+    <a href="/health/overview/">Health</a>
   </nav>
   <p id="demo-banner" class="demo-banner" hidden>
     Sample data, shaped like the private log. This is not your nutrition file.
@@ -41,7 +41,10 @@
       <h2 id="period-label"></h2>
       <p id="remain-line"></p>
       <p id="score-line"></p>
-      <p id="target-line"></p>
+      <details class="fold hero-fold">
+        <summary><span class="fold-title">Targets</span></summary>
+        <p id="target-line"></p>
+      </details>
     </div>
     <div class="hero-foot spread">
       <div class="toggle" id="range-toggle"></div>
