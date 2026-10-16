@@ -435,72 +435,11 @@
     return lifts[0];
   }
 
-  function pctLabel(n) {
-    var v = n <= 1 ? n * 100 : n;
-    return fmtKg(v) + "%";
-  }
-
-  function programLoad(set) {
-    var kg = typeof set.kg === "number" && isFinite(set.kg) ? set.kg : null;
-    var kgMax = typeof set.kgMax === "number" && isFinite(set.kgMax) ? set.kgMax : null;
-    var pct = typeof set.pct === "number" && isFinite(set.pct) ? set.pct : null;
-    var pctMin = typeof set.pctMin === "number" && isFinite(set.pctMin) ? set.pctMin : null;
-    var pctMax = typeof set.pctMax === "number" && isFinite(set.pctMax) ? set.pctMax : null;
-    if (kg !== null && kgMax !== null && kgMax !== kg) return fmtKg(kg) + "-" + fmtKg(kgMax) + " kg";
-    if (kg !== null) return fmtKg(kg) + " kg";
-    if (pctMin === null) pctMin = pct;
-    if (pctMin === null) return "";
-    if (pctMax !== null && pctMax !== pctMin) return pctLabel(pctMin) + "-" + pctLabel(pctMax);
-    return pctLabel(pctMin);
-  }
-
-  function programSetText(set) {
-    var load;
-    var setsText;
-    var repsText;
-    var work;
-    if (!set || typeof set !== "object") return "";
-    load = programLoad(set);
-    setsText = typeof set.sets === "number" && isFinite(set.sets) ? fmtKg(set.sets) : "";
-    repsText = typeof set.reps === "number" && isFinite(set.reps) ? fmtKg(set.reps) : "";
-    if (setsText && repsText) work = setsText + " x " + repsText;
-    else if (repsText) work = repsText + " reps";
-    else if (setsText) work = setsText + " sets";
-    else work = "";
-    if (work && load) return work + " @ " + load;
-    return work || load || "\u2014";
-  }
-
-  function paintPrograms() {
-    var order = ["pullup", "squat", "dip", "muscleup"];
-    var seen = {};
-    var keys = [];
-    var i;
-    var tree;
-    var programs;
-    if (typeof Street.programTree !== "function") return;
-    for (i = 0; i < order.length; i++) {
-      seen[order[i]] = true;
-      keys.push(order[i]);
-    }
-    programs = file && file.programs && typeof file.programs === "object" ? file.programs : null;
-    if (programs) {
-      Object.keys(programs).forEach(function (key) {
-        if (seen[key]) return;
-        seen[key] = true;
-        keys.push(key);
-      });
-    }
-    for (i = 0; i < keys.length; i++) {
-      tree = null;
-      try {
-        tree = Street.programTree(file, keys[i]);
-      } catch (err) {
-        tree = null;
-      }
-      if (!tree || !tree.blocks || !tree.blocks.length) continue;
-      els.main.appendChild(programCard(tree, keys[i]));
-    }
+  function paintProgramHost() {
+    if (!window.TrainingProgram || typeof TrainingProgram.render !== "function") return;
+    try {
+      TrainingProgram.render(file);
+    } catch (err) {}
   }
 
   function nestFold(title, stat, key) {
@@ -518,80 +457,6 @@
       if (details.open) openFolds[key] = true;
       else delete openFolds[key];
     });
-    return details;
-  }
-
-  function programCard(view, lift) {
-    var doneCount = Number(view.doneCount);
-    var total = Number(view.total);
-    var pct;
-    var name = view.name && String(view.name).trim() ? String(view.name).trim() : label(lift);
-    var section;
-    var viz;
-    var b;
-    var block;
-    if (!isFinite(doneCount) || doneCount < 0) doneCount = 0;
-    if (!isFinite(total) || total < 0) total = 0;
-    pct = total ? (doneCount / total) * 100 : 0;
-    if (!isFinite(pct) || pct < 0) pct = 0;
-    if (pct > 100) pct = 100;
-    section = nestFold(name, doneCount + " / " + total, "prog:" + lift);
-    section.classList.add("program");
-    section.setAttribute("aria-label", name);
-    viz = foldViz(section);
-    if (viz && window.SuiteUI) viz.appendChild(SuiteUI.bar(pct, name + " progress"));
-    if (typeof view.note === "string" && view.note.trim()) {
-      section.appendChild(node("p", "goal-note", view.note.trim()));
-    }
-    if (view.start) section.appendChild(node("p", "prog-when", "Start " + view.start));
-    for (b = 0; b < view.blocks.length; b++) {
-      block = view.blocks[b];
-      if (!block) continue;
-      section.appendChild(programBlock(block, lift + ":" + b));
-    }
-    if (total && doneCount >= total) section.appendChild(node("p", "prog-finished", "Program finished."));
-    return section;
-  }
-
-  function programBlock(block, key) {
-    var doneCount = Number(block.doneCount) || 0;
-    var total = Number(block.total) || 0;
-    var pct = total ? (doneCount / total) * 100 : 0;
-    var details = nestFold(block.label || "Block", doneCount + " / " + total, "block:" + key);
-    var viz = foldViz(details);
-    var w;
-    if (viz && window.SuiteUI) viz.appendChild(SuiteUI.bar(pct, (block.label || "Block") + " progress"));
-    for (w = 0; w < (block.weeks || []).length; w++) {
-      details.appendChild(programWeek(block.weeks[w], key + ":" + w));
-    }
-    return details;
-  }
-
-  function programWeek(week, key) {
-    var doneCount = Number(week.doneCount) || 0;
-    var total = Number(week.total) || 0;
-    var details = nestFold(week.label || "Week", doneCount + " / " + total, "week:" + key);
-    var s;
-    var sessions = week.sessions || [];
-    for (s = 0; s < sessions.length; s++) details.appendChild(programSession(sessions[s], key + ":" + s));
-    return details;
-  }
-
-  function programSession(session, key) {
-    var sets = Array.isArray(session.sets) ? session.sets : [];
-    var stat = session.done ? String(session.done) : (sets.length ? programSetText(sets[0]) : "");
-    var title = session.label || "Session";
-    var details = nestFold(title, stat, "sessprog:" + key);
-    var s;
-    if (session.status === "next") details.classList.add("is-next");
-    if (session.status === "next") details.setAttribute("aria-current", "step");
-    if (session.note) details.appendChild(node("p", "prog-when", session.note));
-    if (session.status === "next") details.appendChild(node("p", "prog-when", "Next"));
-    if (!sets.length) details.appendChild(node("p", "set-line", "No sets."));
-    for (s = 0; s < sets.length; s++) {
-      if (!sets[s] || typeof sets[s] !== "object") continue;
-      details.appendChild(node("p", "set-line", programSetText(sets[s])));
-    }
     return details;
   }
 
@@ -1586,7 +1451,7 @@
     els.main.textContent = "";
     paintHero(today);
     paintGoals();
-    paintPrograms();
+    paintProgramHost();
     paintProgress(today);
     paintStrength(today);
     paintCalories(today);
