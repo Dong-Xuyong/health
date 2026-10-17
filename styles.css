@@ -239,6 +239,57 @@ html.dark .chip.active { background: hsl(0 40% 22%); color: hsl(0 70% 86%); }
 html.dark .chip.recovering { background: hsl(36 40% 20%); color: hsl(40 80% 86%); }
 html.dark .chip.resolved { background: hsl(160 30% 18%); color: hsl(152 50% 84%); }
 
+.scan-when,
+.scan-timing,
+.scan-trend {
+  overflow-wrap: anywhere;
+}
+
+.scan-timing,
+.scan-trend {
+  font-size: 0.75rem;
+}
+
+.scan-stats {
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.scan-stats .stat {
+  padding: 7px 8px;
+}
+
+.scan-stats .stat b {
+  font-size: 0.92rem;
+  line-height: 1.25;
+}
+
+.scan-deltas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.chip.delta {
+  min-height: 24px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+.chip.delta.moved {
+  background: hsl(40 90% 88%);
+  color: hsl(28 45% 22%);
+}
+
+html.dark .chip.delta.moved {
+  background: hsl(36 35% 18%);
+  color: hsl(40 75% 84%);
+}
+
 .checkin {
   padding: 8px 0;
   border-top: 1px solid hsl(var(--border));

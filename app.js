@@ -511,10 +511,146 @@
     return wrap;
   }
 
+  var SCAN_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  function oneDecimal(value) {
+    return String(Math.round(value * 10) / 10);
+  }
+
+  function scanDateLabel(iso) {
+    if (typeof iso !== "string" || iso.length < 10) return iso || "";
+    var month = Number(iso.slice(5, 7));
+    var day = Number(iso.slice(8, 10));
+    var year = iso.slice(0, 4);
+    if (!month || !day || month > 12) return iso;
+    return day + " " + SCAN_MONTHS[month - 1] + " " + year;
+  }
+
+  function formatDelta(value, digits, suffix) {
+    var factor = Math.pow(10, digits);
+    var rounded = Math.round(value * factor) / factor;
+    if (rounded === 0) return null;
+    return (rounded > 0 ? "+" : "") + rounded + suffix;
+  }
+
+  function scanHeadline(scan) {
+    if (scan.weight != null) return oneDecimal(scan.weight) + " kg";
+    if (scan.bfPct != null) return oneDecimal(scan.bfPct) + "%";
+    return "Scan";
+  }
+
+  function trendSeries(scans) {
+    var keys = ["weight", "bfPct", "fatMass", "smm"];
+    var best = null;
+    keys.forEach(function (key) {
+      var values = scans.map(function (scan) { return scan[key]; });
+      var count = values.filter(function (value) { return typeof value === "number"; }).length;
+      if (count < 2) return;
+      if (!best || count > best.count) best = { key: key, values: values, count: count };
+    });
+    return best;
+  }
+
+  function appendScanMetric(grid, value, label) {
+    if (value == null || value === "") return;
+    grid.appendChild(statCard(value, label));
+  }
+
+  function deltaChip(text) {
+    return el("span", "chip delta moved", text);
+  }
+
+  function renderBodyScanCard() {
+    var scans = readError.nutrition ? null : Core.bodyScans(reads.nutrition);
+    var latest = scans && scans.length ? scans[scans.length - 1] : null;
+    var card = fold("Body scan", latest ? scanHeadline(latest) : "—", "body-scan");
+    var viz = foldViz(card);
+    var series;
+    var when;
+    var device;
+    var grid;
+    var fatParts;
+    var prev;
+    var chips;
+    var showed;
+    card.classList.add("body-scan");
+    if (readError.nutrition) {
+      card.appendChild(el("p", "muted", "Body scan unavailable."));
+      return card;
+    }
+    if (!latest) {
+      card.appendChild(el("p", "muted", "No body scan yet."));
+      return card;
+    }
+    series = trendSeries(scans);
+    if (viz && window.SuiteUI && series) {
+      viz.appendChild(SuiteUI.spark(series.values, {
+        weight: "Weight trend",
+        bfPct: "Body fat trend",
+        fatMass: "Fat mass trend",
+        smm: "SMM trend"
+      }[series.key] || "Body scan trend"));
+    }
+    device = latest.device || latest.source;
+    when = scanDateLabel(latest.date);
+    if (device) when += " · " + device;
+    card.appendChild(el("p", "meta scan-when", when));
+    if (latest.timing) card.appendChild(el("p", "muted scan-timing", latest.timing));
+    grid = el("div", "stats scan-stats");
+    if (latest.weight != null) appendScanMetric(grid, oneDecimal(latest.weight) + " kg", "⚖️ Weight");
+    fatParts = [];
+    if (latest.bfPct != null) fatParts.push(oneDecimal(latest.bfPct) + "%");
+    if (latest.fatMass != null) fatParts.push(oneDecimal(latest.fatMass) + " kg");
+    if (fatParts.length) appendScanMetric(grid, fatParts.join(" · "), "🔥 Body fat");
+    if (latest.smm != null) appendScanMetric(grid, oneDecimal(latest.smm) + " kg", "💪 SMM");
+    if (latest.leanMass != null) appendScanMetric(grid, oneDecimal(latest.leanMass) + " kg", "Lean");
+    if (latest.visceral != null) appendScanMetric(grid, oneDecimal(latest.visceral), "Visceral");
+    if (latest.bmr != null) appendScanMetric(grid, String(Math.round(latest.bmr)), "⚡ BMR");
+    if (latest.score != null) appendScanMetric(grid, oneDecimal(latest.score), "⭐ Score");
+    if (grid.childNodes.length) card.appendChild(grid);
+    if (scans.length < 2) return card;
+    prev = scans[scans.length - 2];
+    card.appendChild(el("p", "muted scan-trend", "vs " + scanDateLabel(prev.date)));
+    chips = el("div", "scan-deltas");
+    showed = false;
+    function addDelta(current, previous, digits, suffix, label) {
+      var text;
+      if (typeof current !== "number" || typeof previous !== "number") return;
+      text = formatDelta(current - previous, digits, suffix);
+      if (!text) return;
+      chips.appendChild(deltaChip(label + " " + text));
+      showed = true;
+    }
+    addDelta(latest.weight, prev.weight, 1, " kg", "⚖️");
+    (function () {
+      var bits = [];
+      var pct = typeof latest.bfPct === "number" && typeof prev.bfPct === "number"
+        ? formatDelta(latest.bfPct - prev.bfPct, 1, "%")
+        : null;
+      var mass = typeof latest.fatMass === "number" && typeof prev.fatMass === "number"
+        ? formatDelta(latest.fatMass - prev.fatMass, 1, " kg")
+        : null;
+      if (pct) bits.push(pct);
+      if (mass) bits.push(mass);
+      if (!bits.length) return;
+      chips.appendChild(deltaChip("🔥 " + bits.join(" · ")));
+      showed = true;
+    })();
+    addDelta(latest.smm, prev.smm, 1, " kg", "💪");
+    addDelta(latest.leanMass, prev.leanMass, 1, " kg", "Lean");
+    addDelta(latest.visceral, prev.visceral, 1, "", "Visceral");
+    addDelta(latest.bmr, prev.bmr, 0, "", "⚡");
+    addDelta(latest.score, prev.score, 1, "", "⭐");
+    if (!showed) chips.appendChild(el("span", "chip delta", "No change"));
+    card.appendChild(chips);
+    return card;
+  }
+
   function renderToday() {
     var today = Core.lisbonToday();
     var wrap = el("div", "");
     wrap.appendChild(renderSleepCard(today));
+    wrap.appendChild(renderBodyScanCard());
     var open = openInjuries();
     if (!open.length) {
       var empty = fold("Pain", "0", "pain-empty");

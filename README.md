@@ -6,13 +6,15 @@ Tabs, in order: **Nutrition**, **Training**, **Health**.
 
 - **Nutrition** (`/health/` and `/health/nutrition/`, plus `workout.html`) reads `nutrition.json`. `/health/` redirects there and keeps the query string and hash. Old health hashes (`#/`, `#/injuries`, `#/trends`, `#/settings`) redirect to the overview.
 - **Training** (`/health/training/`) reads `streetlifting.json`, including the full program (`blocks` / `weeks` / `sessions`, or a flat `days` list grouped into weeks).
-- **Health** (`/health/overview/`) is injuries, a sleep-target override, and read-only sleep from the journal.
+- **Health** (`/health/overview/`) is injuries, a sleep-target override, read-only sleep from the journal, and a read-only body scan from `nutrition.json`.
 
 `/streetlifting/` still redirects to `/health/training/`. `/nutrition/` still redirects to `/health/nutrition/`.
 
 The Health page writes one file, `health.json`, in the private repo `Dong-Xuyong/progress-sync`. It reads `journal.json`, `nutrition.json`, and `streetlifting.json` and never writes them.
 
 Sleep is not stored in `health.json`. Last night and the sleep chart come from Journal (`entries[date].fields.sleep`, or the other shapes described in `CONTRACT.md`). The settings screen can save a sleep-target override. With no override, the target is `nutrition.json` `goals.sleepHours`, then 8.
+
+The Today tab shows a read-only Body scan card from `nutrition.json`. A day can carry `bodyComp` (scale scan) or the older `body` shape. Both become scans. A scan with `bad: true`, `flag: "bad"`, or `excluded: true` is skipped. The card reads the file already loaded by gh-sync and never writes it. With no token the page shows the demo scan. If the nutrition read fails, the card says it is unavailable.
 
 With no sync token the page shows demo data and a **Demo data** banner. Demo data is never saved. Health data is not cached in `localStorage`. The only key this app reads is `dong-gh-sync`, the token shared by the other pages on this site.
 

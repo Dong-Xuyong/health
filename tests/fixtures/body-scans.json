@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "days": {
+    "2026-08-02": {
+      "body": {
+        "skinfolds": { "abdominal": 12 },
+        "circ": { "waist": 80 }
+      }
+    },
+    "2026-09-01": {
+      "body": {
+        "bodyFat": 19.4,
+        "fatMassKg": 14.2,
+        "leanMassKg": 58.8,
+        "muscleMassKg": 33.1,
+        "metabolicAge": 34,
+        "visceralFat": 8,
+        "waterPct": 54.2,
+        "skinfolds": { "abdominal": 16 },
+        "circ": { "waist": 82 }
+      }
+    },
+    "2026-09-15": {
+      "bodyComp": {
+        "device": "EXAMPLE scale",
+        "bad": true,
+        "weight": 99,
+        "bfPct": 40,
+        "smm": 10
+      },
+      "body": {
+        "bodyFat": 18
+      }
+    },
+    "2026-09-16": {
+      "body": {
+        "flag": "bad",
+        "bodyFat": 50,
+        "fatMassKg": 40
+      }
+    },
+    "2026-09-17": {
+      "bodyComp": {
+        "excluded": true,
+        "device": "EXAMPLE scale",
+        "weight": 80,
+        "bfPct": 30
+      }
+    },
+    "2026-09-18": {
+      "bodyComp": {
+        "device": "EXAMPLE empty"
+      },
+      "body": {
+        "bodyFat": 18.1,
+        "fatMassKg": 13.1
+      }
+    },
+    "2026-10-01": {
+      "weight": 73.2,
+      "bodyComp": {
+        "device": "EXAMPLE scale",
+        "at": "2026-10-01T07:10:00Z",
+        "timing": "EXAMPLE fasted, after waking",
+        "weight": 73.2,
+        "bfPct": 18.6,
+        "fatMass": 13.6,
+        "smm": 32.4,
+        "leanMass": 59.6,
+        "muscleMass": 35.1,
+        "protein": 12.4,
+        "water": 54.8,
+        "visceral": 7,
+        "bmi": 23.1,
+        "bmr": 1684,
+        "whr": 0.86,
+        "ecwTbw": 0.38,
+        "score": 74,
+        "source": "EXAMPLE"
+      }
+    },
+    "2026-10-10": {
+      "body": {
+        "bodyFat": 30,
+        "fatMassKg": 20,
+        "leanMassKg": 50
+      },
+      "bodyComp": {
+        "device": "EXAMPLE scale",
+        "at": "2026-10-10T07:20:00Z",
+        "timing": "EXAMPLE fasted, morning",
+        "weight": "72.4",
+        "bfPct": 17.8,
+        "fatMass": 12.9,
+        "smm": 32.9,
+        "leanMass": 59.5,
+        "muscleMass": 35.4,
+        "protein": 12.6,
+        "water": 55.1,
+        "visceral": 6,
+        "bmi": 22.8,
+        "bmr": 1692,
+        "whr": 0.84,
+        "ecwTbw": 0.379,
+        "score": 76,
+        "source": "EXAMPLE"
+      }
+    },
+    "not-a-date": {
+      "bodyComp": { "weight": 1, "bfPct": 1 }
+    }
+  }
+}
