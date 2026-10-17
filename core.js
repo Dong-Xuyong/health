@@ -585,11 +585,10 @@
     function once() {
       return ghSync.save(APP_ID, getDoc, mergeRemote, { quiet: true });
     }
+    // One retry path: gh-sync.js re-fetches, merges and retries a 409 once itself.
     return once().catch(function (err) {
-      if (!/another device/.test(String(err && err.message))) return Promise.reject(err);
-      return once().catch(function () {
-        return Promise.reject(new Error("⚠️ Not saved, reload"));
-      });
+      if (!(err && (err.status === 409 || /another device/.test(String(err.message))))) return Promise.reject(err);
+      return Promise.reject(new Error("⚠️ Not saved, reload"));
     });
   }
 
