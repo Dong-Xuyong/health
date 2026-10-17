@@ -275,6 +275,63 @@ Object.keys(demo.journal.entries).forEach((date) => {
 const demoSleep = Core.sleepSeries(demo.journal, Core.dateWindow("2026-10-16", 28));
 assert.equal(demoSleep.length, 28);
 assert.equal(demoSleep.every((row) => typeof row.hours === "number"), true);
+
+const bodyFixture = fixture("body-scans.json");
+const scans = Core.bodyScans(bodyFixture);
+assert.equal(scans.length, 5);
+assert.equal(scans[0].date, "2026-09-01");
+assert.equal(scans[0].bfPct, 19.4);
+assert.equal(scans[0].fatMass, 14.2);
+assert.equal(scans[0].leanMass, 58.8);
+assert.equal(scans[0].muscleMass, 33.1);
+assert.equal(scans[0].visceral, 8);
+assert.equal(scans[0].water, 54.2);
+assert.equal(scans[0].metabolicAge, 34);
+assert.equal(scans[0].smm, null);
+assert.equal(scans[0].weight, null);
+assert.equal(scans[1].date, "2026-09-15");
+assert.equal(scans[1].bfPct, 18);
+assert.equal(scans[1].weight, null);
+assert.equal(scans[2].date, "2026-09-18");
+assert.equal(scans[2].bfPct, 18.1);
+assert.equal(scans[2].device, null);
+assert.equal(scans[3].date, "2026-10-01");
+assert.equal(scans[3].device, "EXAMPLE scale");
+assert.equal(scans[3].timing, "EXAMPLE fasted, after waking");
+assert.equal(scans[3].weight, 73.2);
+assert.equal(scans[3].bfPct, 18.6);
+assert.equal(scans[3].fatMass, 13.6);
+assert.equal(scans[3].smm, 32.4);
+assert.equal(scans[3].leanMass, 59.6);
+assert.equal(scans[3].visceral, 7);
+assert.equal(scans[3].bmr, 1684);
+assert.equal(scans[3].score, 74);
+assert.equal(scans[3].source, "EXAMPLE");
+assert.equal(scans[4].date, "2026-10-10");
+assert.equal(scans[4].bfPct, 17.8);
+assert.equal(scans[4].weight, null);
+assert.equal(scans[4].fatMass, 12.9);
+assert.equal(scans.some((scan) => scan.weight === 99 || scan.bfPct === 40 || scan.bfPct === 50 || scan.bfPct === 30), false);
+assert.deepEqual(Core.bodyScans(null), []);
+assert.deepEqual(Core.bodyScans({ days: { "2026-10-11": { weight: 70 } } }), []);
+assert.equal(Core.bodyScans({
+  days: {
+    "2026-08-01": {
+      bodyComp: { bad: true, weight: 99, bfPct: 40 },
+      body: { bodyFat: 18.2, fatMassKg: 13 }
+    }
+  }
+})[0].bfPct, 18.2);
+
+const demoScans = Core.bodyScans(demo.nutrition);
+assert.equal(demoScans.length, 3);
+assert.equal(demoScans[0].bfPct, 19.4);
+assert.equal(demoScans[0].smm, null);
+assert.equal(demoScans[1].weight, 73.2);
+assert.equal(demoScans[2].weight, 72.4);
+assert.equal(demoScans[2].device.startsWith("EXAMPLE"), true);
+assert.equal(demoScans[2].timing.startsWith("EXAMPLE"), true);
+assert.equal(demoScans.some((scan) => scan.weight === 99 || scan.bfPct === 40), false);
 Object.keys(demo.nutrition.days).forEach((date) => {
   const meals = demo.nutrition.days[date].meals;
   const list = Array.isArray(meals) ? meals : Object.keys(meals).flatMap((key) => meals[key]);

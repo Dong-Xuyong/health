@@ -581,6 +581,120 @@
     };
   }
 
+  var SCAN_FIELDS = [
+    "weight", "bfPct", "fatMass", "smm", "leanMass", "muscleMass",
+    "protein", "water", "visceral", "bmi", "bmr", "whr", "ecwTbw",
+    "score", "metabolicAge"
+  ];
+
+  function textOrNull(value) {
+    if (typeof value !== "string") return null;
+    var trimmed = value.trim();
+    return trimmed ? trimmed : null;
+  }
+
+  /* A scan is dropped when the file marks it bad, flagged bad, or excluded. */
+  function scanRejected(raw) {
+    if (!isPlain(raw)) return true;
+    if (raw.bad === true) return true;
+    if (raw.flag === "bad") return true;
+    if (raw.excluded === true) return true;
+    return false;
+  }
+
+  function blankScan(date) {
+    return {
+      date: date,
+      device: null,
+      at: null,
+      timing: null,
+      weight: null,
+      bfPct: null,
+      fatMass: null,
+      smm: null,
+      leanMass: null,
+      muscleMass: null,
+      protein: null,
+      water: null,
+      visceral: null,
+      bmi: null,
+      bmr: null,
+      whr: null,
+      ecwTbw: null,
+      score: null,
+      source: null,
+      metabolicAge: null
+    };
+  }
+
+  function scanHasMetric(scan) {
+    var i;
+    for (i = 0; i < SCAN_FIELDS.length; i++) {
+      if (scan[SCAN_FIELDS[i]] != null) return true;
+    }
+    return false;
+  }
+
+  function scanFromBodyComp(date, raw) {
+    var scan = blankScan(date);
+    scan.device = textOrNull(raw.device);
+    scan.at = textOrNull(raw.at);
+    scan.timing = textOrNull(raw.timing);
+    scan.weight = finite(raw.weight);
+    scan.bfPct = finite(raw.bfPct);
+    scan.fatMass = finite(raw.fatMass);
+    scan.smm = finite(raw.smm);
+    scan.leanMass = finite(raw.leanMass);
+    scan.muscleMass = finite(raw.muscleMass);
+    scan.protein = finite(raw.protein);
+    scan.water = finite(raw.water);
+    scan.visceral = finite(raw.visceral);
+    scan.bmi = finite(raw.bmi);
+    scan.bmr = finite(raw.bmr);
+    scan.whr = finite(raw.whr);
+    scan.ecwTbw = finite(raw.ecwTbw);
+    scan.score = finite(raw.score);
+    scan.source = textOrNull(raw.source);
+    return scanHasMetric(scan) ? scan : null;
+  }
+
+  function scanFromBody(date, raw) {
+    var scan = blankScan(date);
+    scan.device = textOrNull(raw.device);
+    scan.timing = textOrNull(raw.timing);
+    scan.bfPct = finite(raw.bodyFat);
+    scan.fatMass = finite(raw.fatMassKg);
+    scan.leanMass = finite(raw.leanMassKg);
+    scan.muscleMass = finite(raw.muscleMassKg);
+    scan.metabolicAge = finite(raw.metabolicAge);
+    scan.visceral = finite(raw.visceralFat);
+    scan.water = finite(raw.waterPct);
+    scan.source = textOrNull(raw.source);
+    return scanHasMetric(scan) ? scan : null;
+  }
+
+  /* One scan per day. bodyComp wins when it has numbers. Older body is the fallback.
+     Rejected scans are skipped. Skinfolds and circumferences alone are not a scan. */
+  function bodyScans(nutrition) {
+    var days = nutrition && isPlain(nutrition.days) ? nutrition.days : {};
+    var dates = Object.keys(days).filter(function (date) { return DATE_RE.test(date); });
+    var out = [];
+    dates.sort();
+    dates.forEach(function (date) {
+      var day = days[date];
+      var scan = null;
+      if (!isPlain(day)) return;
+      if (isPlain(day.bodyComp) && !scanRejected(day.bodyComp)) {
+        scan = scanFromBodyComp(date, day.bodyComp);
+      }
+      if (!scan && isPlain(day.body) && !scanRejected(day.body)) {
+        scan = scanFromBody(date, day.body);
+      }
+      if (scan) out.push(scan);
+    });
+    return out;
+  }
+
   function saveHealth(ghSync, getDoc, mergeRemote) {
     function once() {
       return ghSync.save(APP_ID, getDoc, mergeRemote, { quiet: true });
@@ -605,6 +719,7 @@
     sleepTarget: sleepTarget,
     painSeries: painSeries,
     nutritionDaily: nutritionDaily,
+    bodyScans: bodyScans,
     trainingDaily: trainingDaily,
     rollingAvg: rollingAvg,
     journalSleep: journalSleep,
