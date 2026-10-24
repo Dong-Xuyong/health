@@ -1,7 +1,13 @@
 #program:empty { display: none; }
 
+/* Keep the shared suite column (width + auto gutters on #program).
+   A margin shorthand here used to zero the side margins and pin this
+   list to the left of the metric folds. */
 #program {
-  margin: 0 0 14px;
+  margin-top: 0;
+  margin-right: auto;
+  margin-bottom: 14px;
+  margin-left: auto;
 }
 
 #program details {
@@ -9,6 +15,11 @@
   border-radius: var(--dx-radius-sm);
   background: var(--dx-card);
   color: var(--dx-text);
+}
+
+/* Outer blocks share the fold card's corner so the column edges match. */
+#program > .tp-block {
+  border-radius: var(--dx-radius);
 }
 
 #program .tp-week,
@@ -22,7 +33,7 @@
   align-items: center;
   gap: 8px;
   min-height: 44px;
-  padding: 6px 10px;
+  padding: 6px 12px;
   cursor: pointer;
   list-style: none;
   color: var(--dx-text);
@@ -70,7 +81,7 @@
 #program .tp-note,
 #program .tp-body p {
   margin: 0;
-  padding: 0 12px 8px 34px;
+  padding: 0 12px 8px 36px;
   color: var(--dx-muted);
   font-size: 0.82rem;
 }
